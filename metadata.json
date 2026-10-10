@@ -1,0 +1,6 @@
+{
+  "name": "TravelMate",
+  "description": "Curated trip architecture, visual day-by-day itineraries, smart budgeting, and printable travel dossiers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
