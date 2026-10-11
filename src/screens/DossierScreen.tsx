@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+'use client';
+
+import React, { useState, useMemo } from 'react';
 import { useTravelStore } from '../store';
+import { formatCurrency } from '@/lib/currencies';
 
 export const DossierScreen: React.FC = () => {
-  const { activeTrip, activities, expenses, trips, setActiveTripId, currentUser } =
+  const { activeTrip, activities, expenses, trips, setActiveTripId, currentUser, openEditTripModal } =
     useTravelStore();
 
   // Export Customization States (Hidden on print)
@@ -14,16 +17,42 @@ export const DossierScreen: React.FC = () => {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Group activities by trip day
-  const daysCount = activeTrip?.daysCount || 8;
+  const daysCount = Math.max(
+    1,
+    activeTrip?.daysCount ||
+      (activeTrip?.startDate && activeTrip?.endDate
+        ? Math.floor(
+            (new Date(activeTrip.endDate).getTime() - new Date(activeTrip.startDate).getTime()) /
+              (1000 * 60 * 60 * 24)
+          ) + 1
+        : 1)
+  );
   const daysArray = Array.from({ length: daysCount }, (_, i) => i + 1);
 
   // Budget calculations
   const totalTracked = expenses.reduce(
-    (acc, curr) => acc + (curr.amount || curr.costJpy || curr.costUsd || 0),
+    (acc, curr) => acc + (curr.costUsd || curr.amount || 0),
     0
   );
-  const budgetCap = activeTrip?.budget || activeTrip?.estimatedBudget || 3200;
+  const budgetCap = activeTrip?.budget || activeTrip?.estimatedBudget || 0;
   const budgetVariance = budgetCap - totalTracked;
+
+  const expenseCategories = useMemo(() => {
+    const cats: Record<string, { count: number; sum: number }> = {};
+    expenses.forEach((e) => {
+      const cat = e.category || 'other';
+      if (!cats[cat]) cats[cat] = { count: 0, sum: 0 };
+      cats[cat].count += 1;
+      cats[cat].sum += (e.costUsd || e.amount || 0);
+    });
+    return Object.entries(cats).map(([cat, data]) => ({
+      cat: cat.charAt(0).toUpperCase() + cat.slice(1),
+      count: data.count,
+      amt: data.sum,
+      pct: totalTracked > 0 ? `${Math.round((data.sum / totalTracked) * 100)}%` : '0%',
+      status: 'Recorded',
+    }));
+  }, [expenses, totalTracked]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -39,10 +68,10 @@ export const DossierScreen: React.FC = () => {
 
   const handleCopyMarkdown = () => {
     const md = `# EXPEDITION BRIEFING DOSSIER: ${activeTrip?.title || 'Trip'}
-**Reference:** TM-EXP-${activeTrip?.id?.toUpperCase() || 'TRIP'}-2026
-**Dates:** ${activeTrip?.dateRange || '8 Days'}
-**Lead Curator:** ${currentUser?.name || 'Alex Morgan'}
-**Budget:** ${activeTrip?.currency} ${budgetCap.toLocaleString()} (Tracked: ${activeTrip?.currency} ${totalTracked.toLocaleString()})
+**Reference:** TM-EXP-${activeTrip?.id?.toUpperCase() || 'TRIP'}
+**Dates:** ${activeTrip?.dateRange || `${daysCount} Days`}
+**Lead Curator:** ${currentUser?.name || 'Traveler'}
+**Budget:** ${activeTrip?.currency || 'USD'} ${budgetCap.toLocaleString()} (Tracked: ${activeTrip?.currency || 'USD'} ${totalTracked.toLocaleString()})
 
 ## Summary
 ${activeTrip?.description || activeTrip?.routeSummary || 'Curated journey dossier.'}
@@ -51,24 +80,25 @@ ${activeTrip?.description || activeTrip?.routeSummary || 'Curated journey dossie
 ${daysArray
   .map((dayNum) => {
     const dayActs = activities.filter((a) => a.dayNumber === dayNum);
-    const dateStr = `Day ${dayNum} (Oct ${11 + dayNum}, 2026)`;
+    const dateStr = activeTrip?.startDate
+      ? (() => {
+          const d = new Date(activeTrip.startDate);
+          d.setDate(d.getDate() + (dayNum - 1));
+          return d.toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' });
+        })()
+      : `Day ${dayNum}`;
     const actsStr =
       dayActs.length > 0
         ? dayActs
             .map(
               (a) =>
-                `- **${a.startTime || a.time}**: ${a.title} (${a.location}) [${a.category}] - ${activeTrip?.currency} ${(a.cost || 0).toLocaleString()}`
+                `- **${a.startTime || a.time}**: ${a.title} (${a.location}) [${a.category}] - ${formatCurrency(a.cost || 0)}`
             )
             .join('\n')
         : '- Open window / transit pacing';
     return `### ${dateStr}\n${actsStr}`;
   })
   .join('\n\n')}
-
-## Emergency Contacts (Kyoto / Japan)
-- Police: 110 | Ambulance: 119
-- Consular Emergency: +81 3-3224-5000
-- Tourist Support: +81 75-343-0548
 `;
 
     navigator.clipboard.writeText(md).then(() => {
@@ -215,16 +245,20 @@ ${daysArray
             <div className="flex items-center gap-1 bg-white dark:bg-slate-700 p-0.5 rounded-lg border border-slate-200 dark:border-slate-600">
               <button
                 onClick={() => setDensityMode('detailed')}
-                className={`px-2 py-1 rounded text-[11px] font-semibold cursor-pointer ${
-                  densityMode === 'detailed' ? 'bg-primary text-white' : 'text-slate-600'
+                className={`px-2 py-1 rounded text-[11px] font-semibold cursor-pointer transition-colors ${
+                  densityMode === 'detailed'
+                    ? 'bg-primary text-white'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 Detailed Notes
               </button>
               <button
                 onClick={() => setDensityMode('compact')}
-                className={`px-2 py-1 rounded text-[11px] font-semibold cursor-pointer ${
-                  densityMode === 'compact' ? 'bg-primary text-white' : 'text-slate-600'
+                className={`px-2 py-1 rounded text-[11px] font-semibold cursor-pointer transition-colors ${
+                  densityMode === 'compact'
+                    ? 'bg-primary text-white'
+                    : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
                 Compact Guide
@@ -265,9 +299,30 @@ ${daysArray
         </div>
       </div>
 
-      {/* ========================================================================= */}
-      {/* PRINTABLE PAPER CANVAS (Optimized for PDF Printing)                       */}
-      {/* ========================================================================= */}
+      {trips.length === 0 ? (
+        <div className="bg-surface-container-lowest p-space-xl rounded-xl flex flex-col items-center justify-center text-center shadow-sm border border-surface-container-high/40 py-16 animate-fade-in">
+          <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant mb-space-sm">
+            <span className="material-symbols-outlined text-[32px]">description</span>
+          </div>
+          <h4 className="font-item-title text-item-title text-on-surface font-semibold text-lg">
+            No expedition dossier available
+          </h4>
+          <p className="font-body text-body text-on-surface-variant mt-1 max-w-sm">
+            Create an expedition first to generate and export professional physical dossiers, PDF briefs, and consular summaries.
+          </p>
+          <button
+            onClick={() => openEditTripModal()}
+            className="mt-space-md h-[40px] px-5 rounded-lg bg-secondary hover:bg-secondary-container text-on-secondary font-button text-caption shadow-sm cursor-pointer font-semibold flex items-center gap-1.5"
+            type="button"
+          >
+            <span className="material-symbols-outlined text-[18px]">add</span>
+            <span>+ Create First Trip</span>
+          </button>
+        </div>
+      ) : (
+      /* ========================================================================= */
+      /* PRINTABLE PAPER CANVAS (Optimized for PDF Printing)                       */
+      /* ========================================================================= */
       <div
         id="printable-dossier"
         className="bg-white border border-slate-300 p-8 sm:p-12 rounded-3xl shadow-md text-slate-900 print:border-none print:shadow-none print:p-0 print:rounded-none transition-all"
@@ -283,11 +338,11 @@ ${daysArray
               <span>TRAVELMATE ATELIER • EXPEDITION DOSSIER</span>
               <span>•</span>
               <span className="text-slate-800">
-                ID #{activeTrip?.id?.toUpperCase() || 'TRP-8492'}
+                ID #{activeTrip?.id?.toUpperCase() || 'TRP'}
               </span>
             </div>
             <div className="flex items-center gap-3">
-              <span>DOC REF: TM-EXP-2026-V1.4</span>
+              <span>DOC REF: TM-EXP-V1.0</span>
               <span>•</span>
               <span className="text-emerald-700">AUTHORIZATION VERIFIED</span>
             </div>
@@ -299,15 +354,15 @@ ${daysArray
               <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded font-mono text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-700 border border-slate-200">
                 <span>CLASSIFICATION: EXECUTIVE ITINERARY</span>
                 <span>•</span>
-                <span>{activeTrip?.status?.toUpperCase() || 'CONFIRMED'}</span>
+                <span>{activeTrip?.status?.toUpperCase() || 'PLANNED'}</span>
               </div>
               <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight font-display text-slate-900">
-                {activeTrip?.title || 'Kyoto & Tokyo Autumn Discovery'}
+                {activeTrip?.title || 'Expedition Briefing'}
               </h1>
               <p className="text-xs sm:text-sm text-slate-600 leading-relaxed font-sans">
                 {activeTrip?.description ||
                   activeTrip?.routeSummary ||
-                  'An intentional, curated itinerary mapping cultural heritage, temple architecture, and gastronomic milestones across Japan.'}
+                  'An intentional, curated itinerary mapping destinations, activities, and milestones.'}
               </p>
             </div>
 
@@ -338,6 +393,38 @@ ${daysArray
           </div>
         </header>
 
+        {/* Cover Photo Banner or Fallback */}
+        <div className="relative h-44 w-full rounded-2xl overflow-hidden mb-6 border border-slate-200 break-inside-avoid">
+          {activeTrip?.coverImage ? (
+            <img
+              src={activeTrip.coverImage}
+              alt={activeTrip.coverImageAlt || activeTrip.title}
+              className="w-full h-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-teal-900/40 via-slate-100 to-slate-200 relative flex items-center justify-center">
+              <span className="material-symbols-outlined text-[40px] text-teal-700/40">explore</span>
+            </div>
+          )}
+          {activeTrip?.coverImage && activeTrip?.coverImageCredit && (
+            <div className="absolute bottom-2 right-2 px-2 py-0.5 rounded bg-black/60 text-[9px] text-white/90">
+              {activeTrip.coverImageCreditUrl ? (
+                <a
+                  href={activeTrip.coverImageCreditUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline"
+                >
+                  {activeTrip.coverImageCredit}
+                </a>
+              ) : (
+                <span>{activeTrip.coverImageCredit}</span>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* ======================================================== */}
         {/* 2. EXECUTIVE EXPEDITION SUMMARY METRICS                  */}
         {/* ======================================================== */}
@@ -347,7 +434,7 @@ ${daysArray
               Executive Expedition Summary &amp; Key Parameters
             </span>
             <span className="text-[10px] font-mono text-slate-500">
-              Curator: {currentUser?.name || 'Alex Morgan'}
+              Curator: {currentUser?.name || 'Traveler'}
             </span>
           </div>
 
@@ -357,10 +444,10 @@ ${daysArray
                 Date Range &amp; Duration
               </span>
               <span className="font-bold text-slate-900">
-                {activeTrip?.dateRange || 'Oct 12 – Oct 19, 2026'}
+                {activeTrip?.dateRange || `${daysCount} Days`}
               </span>
               <span className="text-[10px] text-slate-500 block">
-                {daysCount} Days ({daysCount - 1} Nights)
+                {daysCount} Days ({Math.max(0, daysCount - 1)} Nights)
               </span>
             </div>
 
@@ -369,12 +456,10 @@ ${daysArray
                 Base Destinations
               </span>
               <span className="font-bold text-slate-900 truncate block">
-                {activeTrip?.destinations?.join(' ➔ ') ||
-                  activeTrip?.destinationRegion ||
-                  'Kyoto ➔ Tokyo'}
+                {activeTrip?.destinations?.join(' ➔ ') || 'Curated Destinations'}
               </span>
               <span className="text-[10px] text-slate-500 block">
-                Country: {activeTrip?.country || 'Japan'}
+                Country: {activeTrip?.country || 'International'}
               </span>
             </div>
 
@@ -383,10 +468,10 @@ ${daysArray
                 Budget Allocation
               </span>
               <span className="font-bold text-slate-900">
-                {activeTrip?.currency} {budgetCap.toLocaleString()}
+                {activeTrip?.currency || 'USD'} {budgetCap.toLocaleString()}
               </span>
               <span className="text-[10px] text-emerald-700 font-semibold block">
-                Variance: +{activeTrip?.currency} {budgetVariance.toLocaleString()} (Under)
+                Variance: {budgetVariance >= 0 ? '+' : ''}{activeTrip?.currency || 'USD'} {budgetVariance.toLocaleString()} ({budgetVariance >= 0 ? 'Under' : 'Over'})
               </span>
             </div>
 
@@ -404,32 +489,26 @@ ${daysArray
           </div>
 
           {/* Key Confirmed Reservations Strip */}
-          <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono text-slate-600 flex-wrap gap-2">
-            <div className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-emerald-600 text-[14px]">
-                verified
-              </span>
-              <span>
-                <strong>Transit:</strong> Shinkansen Hikari (Seat 7-D Car 5) Confirmed
-              </span>
+          {activities.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-slate-200 flex items-center justify-between text-[11px] font-mono text-slate-600 flex-wrap gap-2">
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-emerald-600 text-[14px]">
+                  verified
+                </span>
+                <span>
+                  <strong>Activities:</strong> {activities.length} Scheduled Events
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-emerald-600 text-[14px]">
+                  verified
+                </span>
+                <span>
+                  <strong>Ledger:</strong> {activeTrip?.currency || 'USD'} {totalTracked.toLocaleString()} Logged
+                </span>
+              </div>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-emerald-600 text-[14px]">
-                verified
-              </span>
-              <span>
-                <strong>Lodging:</strong> Gion Machiya &amp; Shibuya Hotel Vouchers Issued
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-emerald-600 text-[14px]">
-                verified
-              </span>
-              <span>
-                <strong>Culinary:</strong> 3 Temple Tea Ceremonies Confirmed
-              </span>
-            </div>
-          </div>
+          )}
         </section>
 
         {/* ======================================================== */}
@@ -448,7 +527,13 @@ ${daysArray
           <div className="space-y-5">
             {daysArray.map((dayNum) => {
               const dayActs = activities.filter((a) => a.dayNumber === dayNum);
-              const dateStr = `October ${11 + dayNum}, 2026`;
+              const dateStr = activeTrip?.startDate
+                ? (() => {
+                    const d = new Date(activeTrip.startDate);
+                    d.setDate(d.getDate() + (dayNum - 1));
+                    return d.toLocaleDateString('default', { month: 'long', day: 'numeric', year: 'numeric' });
+                  })()
+                : `Day ${dayNum}`;
               const dayTotalCost = dayActs.reduce((acc, curr) => acc + (curr.cost || 0), 0);
 
               return (
@@ -526,7 +611,7 @@ ${daysArray
                             {/* Cost Pill */}
                             <div className="text-right shrink-0 font-mono text-xs font-semibold text-slate-800">
                               {act.cost && act.cost > 0
-                                ? `${activeTrip?.currency} ${act.cost.toLocaleString()}`
+                                ? formatCurrency(act.cost)
                                 : 'Included'}
                             </div>
                           </div>
@@ -566,61 +651,35 @@ ${daysArray
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-slate-700">
-                  {[
-                    {
-                      cat: 'Food & Dining',
-                      count: 5,
-                      amt: 54000,
-                      pct: '28%',
-                      status: 'Paid / Reserved',
-                    },
-                    {
-                      cat: 'Transport & Rail',
-                      count: 4,
-                      amt: 32000,
-                      pct: '17%',
-                      status: 'Tickets Confirmed',
-                    },
-                    {
-                      cat: 'Sightseeing & Culture',
-                      count: 8,
-                      amt: 22000,
-                      pct: '12%',
-                      status: 'Vouchers Ready',
-                    },
-                    {
-                      cat: 'Lodging & Ryokan',
-                      count: 2,
-                      amt: 68000,
-                      pct: '36%',
-                      status: 'Deposit Guaranteed',
-                    },
-                    {
-                      cat: 'Miscellaneous / Buffer',
-                      count: 3,
-                      amt: 14000,
-                      pct: '7%',
-                      status: 'Contingency Cash',
-                    },
-                  ].map((row) => (
-                    <tr key={row.cat}>
-                      <td className="py-2 px-3 font-bold text-slate-900">{row.cat}</td>
-                      <td className="py-2 px-3">{row.count} entries</td>
-                      <td className="py-2 px-3 font-semibold">
-                        ¥{row.amt.toLocaleString()}
-                      </td>
-                      <td className="py-2 px-3">{row.pct}</td>
-                      <td className="py-2 px-3 text-right text-emerald-700 font-bold text-[10px]">
-                        {row.status}
+                  {expenseCategories.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-4 px-3 text-center text-slate-500 font-medium">
+                        No expenses recorded in ledger yet.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    expenseCategories.map((row) => (
+                      <tr key={row.cat}>
+                        <td className="py-2 px-3 font-bold text-slate-900">{row.cat}</td>
+                        <td className="py-2 px-3">{row.count} entries</td>
+                        <td className="py-2 px-3 font-semibold">
+                          {activeTrip?.currency || 'USD'} {row.amt.toLocaleString()}
+                        </td>
+                        <td className="py-2 px-3">{row.pct}</td>
+                        <td className="py-2 px-3 text-right text-emerald-700 font-bold text-[10px]">
+                          {row.status}
+                        </td>
+                      </tr>
+                    ))
+                  )}
                   <tr className="bg-slate-50 font-bold text-slate-900">
                     <td className="py-2.5 px-3">TOTAL TRACKED EXPENSES</td>
-                    <td className="py-2.5 px-3">22 items</td>
-                    <td className="py-2.5 px-3">¥190,000</td>
-                    <td className="py-2.5 px-3">100%</td>
-                    <td className="py-2.5 px-3 text-right text-emerald-700">UNDER CAP</td>
+                    <td className="py-2.5 px-3">{expenses.length} item{expenses.length === 1 ? '' : 's'}</td>
+                    <td className="py-2.5 px-3">{activeTrip?.currency || 'USD'} {totalTracked.toLocaleString()}</td>
+                    <td className="py-2.5 px-3">{totalTracked > 0 ? '100%' : '0%'}</td>
+                    <td className="py-2.5 px-3 text-right text-emerald-700">
+                      {budgetVariance >= 0 ? 'UNDER CAP' : 'OVER CAP'}
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -639,20 +698,18 @@ ${daysArray
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                 <span className="font-bold text-slate-900 block font-display">
-                  Autumn Thermal Range
+                  Seasonal Thermal Range
                 </span>
                 <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                  Daytime highs 17°C–19°C; evening drops to 10°C–12°C. Pack merino wool underlayers
-                  and light windproof overcoats for mountain shrine visits.
+                  Review local weather forecasts before departure and pack appropriate layers for outdoor excursions and walking legs.
                 </p>
               </div>
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
                 <span className="font-bold text-slate-900 block font-display">
-                  Temple Footwear Protocol
+                  Expedition Footwear Protocol
                 </span>
                 <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                  Slip-on shoes required for frequent tatami entries at Kennin-ji, Kodai-ji, and
-                  Nanzen-ji. Clean dark socks recommended for temple verandas.
+                  Comfortable, slip-on walking shoes recommended for extensive daily waypoint pacing and site entries.
                 </p>
               </div>
               <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
@@ -660,8 +717,7 @@ ${daysArray
                   Power &amp; Cash Connectivity
                 </span>
                 <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
-                  100V Type A/B two-prong outlets. IC Card (Suica/Pasmo) loaded via Apple Wallet.
-                  Carry ¥10,000 cash for traditional temple entry tickets and goshuin stamps.
+                  Confirm regional plug adapters, mobile contactless cards, and keep modest local currency for small vendors.
                 </p>
               </div>
             </div>
@@ -677,7 +733,7 @@ ${daysArray
               <h3 className="text-sm font-bold uppercase tracking-wider text-slate-900 font-display">
                 Emergency Protocols &amp; 24/7 Consular Contacts
               </h3>
-              <span className="text-[10px] font-mono text-slate-500">Jurisdiction: Kansai / Kanto</span>
+              <span className="text-[10px] font-mono text-slate-500">Jurisdiction: {activeTrip?.country || 'International'}</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
@@ -685,22 +741,22 @@ ${daysArray
                 <span className="text-slate-400 block font-bold text-[10px]">
                   POLICE &amp; MEDICAL AMBULANCE
                 </span>
-                <span className="font-bold text-slate-900 text-sm">110 (Police) • 119 (Medical)</span>
-                <p className="text-[10px] text-slate-500 mt-0.5">24/7 English translation available</p>
+                <span className="font-bold text-slate-900 text-sm">Emergency Hotlines</span>
+                <p className="text-[10px] text-slate-500 mt-0.5">Contact local emergency responders or 112 / 911 services</p>
               </div>
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                 <span className="text-slate-400 block font-bold text-[10px]">
-                  US / ALLIED EMBASSY HOTLINE
+                  EMBASSY / CONSULAR HOTLINE
                 </span>
-                <span className="font-bold text-slate-900 text-sm">+81 3-3224-5000</span>
-                <p className="text-[10px] text-slate-500 mt-0.5">Tokyo Consular Emergency Division</p>
+                <span className="font-bold text-slate-900 text-sm">Consular Services</span>
+                <p className="text-[10px] text-slate-500 mt-0.5">Reach your home country's local mission desk</p>
               </div>
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                 <span className="text-slate-400 block font-bold text-[10px]">
-                  KYOTO MULTILINGUAL VISITOR DESK
+                  TRAVEL ASSISTANCE DESK
                 </span>
-                <span className="font-bold text-slate-900 text-sm">+81 75-343-0548</span>
-                <p className="text-[10px] text-slate-500 mt-0.5">Kyoto Station 2F Kyo-Navi</p>
+                <span className="font-bold text-slate-900 text-sm">Visitor Support</span>
+                <p className="text-[10px] text-slate-500 mt-0.5">Transit center &amp; regional tourist bureau</p>
               </div>
             </div>
           </section>
@@ -713,7 +769,7 @@ ${daysArray
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 font-mono text-[10px] text-slate-500">
             <div className="space-y-1">
               <div>
-                <strong className="text-slate-900">PREPARED BY:</strong> {currentUser?.name || 'Alex Morgan'} (Lead Expedition Architect)
+                <strong className="text-slate-900">PREPARED BY:</strong> {currentUser?.name || 'Traveler'} (Lead Expedition Architect)
               </div>
               <div>
                 <strong className="text-slate-900">EXPEDITION HASH:</strong> SHA256-48c9f2b1a82d77e09923
@@ -722,7 +778,7 @@ ${daysArray
 
             <div className="sm:text-right space-y-1">
               <div className="border-b border-slate-400 pb-1 inline-block min-w-[160px] text-slate-800 font-serif italic text-xs">
-                Alex Morgan
+                {currentUser?.name || 'Authorized Traveler'}
               </div>
               <div className="text-[9px] uppercase tracking-wider text-slate-400">
                 Curator Authorization Signature
@@ -731,10 +787,11 @@ ${daysArray
           </div>
 
           <div className="mt-6 text-center text-[9px] font-mono text-slate-400 border-t border-slate-100 pt-3">
-            Generated via TravelMate Atelier Curated Trip Architecture • Document ID #TM-EXP-8492 • Page 1 of 1 (Consolidated Briefing)
+            Generated via TravelMate Atelier Curated Trip Architecture • Document ID #TM-EXP-{activeTrip?.id || 'TRIP'} • Page 1 of 1 (Consolidated Briefing)
           </div>
         </footer>
       </div>
+      )}
     </div>
   );
 };

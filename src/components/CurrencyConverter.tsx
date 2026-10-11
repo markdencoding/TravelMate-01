@@ -1,167 +1,15 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 
-export interface CurrencyInfo {
-  code: string;
-  name: string;
-  symbol: string;
-  flag: string;
-  baseRateToUsd: number; // 1 USD = X Currency units
-  precision: number;
-  sampleItems?: { amount: number; label: string }[];
-}
+import {
+  SHARED_CURRENCIES,
+  type CurrencyInfo,
+} from '../lib/currencies';
+import { SearchableCurrencySelect } from './SearchableCurrencySelect';
 
-export const SUPPORTED_CURRENCIES: Record<string, CurrencyInfo> = {
-  USD: {
-    code: 'USD',
-    name: 'US Dollar',
-    symbol: '$',
-    flag: '🇺🇸',
-    baseRateToUsd: 1.0,
-    precision: 2,
-    sampleItems: [
-      { amount: 5, label: 'Coffee & treat' },
-      { amount: 20, label: 'Casual Lunch' },
-      { amount: 65, label: 'Nice Dinner' },
-      { amount: 150, label: 'City Hotel' },
-    ],
-  },
-  JPY: {
-    code: 'JPY',
-    name: 'Japanese Yen',
-    symbol: '¥',
-    flag: '🇯🇵',
-    baseRateToUsd: 154.2,
-    precision: 0,
-    sampleItems: [
-      { amount: 500, label: 'Konbini snack' },
-      { amount: 1500, label: 'Ramen & Gyoza' },
-      { amount: 5000, label: 'Izakaya dinner' },
-      { amount: 14000, label: 'Shinkansen ticket' },
-      { amount: 28000, label: 'Ryokan with onsen' },
-    ],
-  },
-  EUR: {
-    code: 'EUR',
-    name: 'Euro',
-    symbol: '€',
-    flag: '🇪🇺',
-    baseRateToUsd: 0.925,
-    precision: 2,
-    sampleItems: [
-      { amount: 4, label: 'Espresso & brioche' },
-      { amount: 18, label: 'Trattoria lunch' },
-      { amount: 50, label: 'Full course dinner' },
-      { amount: 95, label: 'Regional rail pass' },
-      { amount: 180, label: 'Seaside hotel' },
-    ],
-  },
-  GBP: {
-    code: 'GBP',
-    name: 'British Pound',
-    symbol: '£',
-    flag: '🇬🇧',
-    baseRateToUsd: 0.785,
-    precision: 2,
-    sampleItems: [
-      { amount: 4.5, label: 'Flat white' },
-      { amount: 16, label: 'Pub meal' },
-      { amount: 45, label: 'Bistro dinner' },
-      { amount: 75, label: 'Highland tour' },
-      { amount: 160, label: 'Stone cottage B&B' },
-    ],
-  },
-  CAD: {
-    code: 'CAD',
-    name: 'Canadian Dollar',
-    symbol: 'C$',
-    flag: '🇨🇦',
-    baseRateToUsd: 1.39,
-    precision: 2,
-    sampleItems: [
-      { amount: 6, label: 'Coffee' },
-      { amount: 22, label: 'Casual meal' },
-      { amount: 70, label: 'Dinner' },
-    ],
-  },
-  AUD: {
-    code: 'AUD',
-    name: 'Australian Dollar',
-    symbol: 'A$',
-    flag: '🇦🇺',
-    baseRateToUsd: 1.53,
-    precision: 2,
-    sampleItems: [
-      { amount: 5.5, label: 'Flat white' },
-      { amount: 25, label: 'Cafe lunch' },
-      { amount: 80, label: 'Dinner' },
-    ],
-  },
-  CHF: {
-    code: 'CHF',
-    name: 'Swiss Franc',
-    symbol: 'CHF',
-    flag: '🇨🇭',
-    baseRateToUsd: 0.885,
-    precision: 2,
-    sampleItems: [
-      { amount: 6, label: 'Coffee' },
-      { amount: 30, label: 'Fondue lunch' },
-      { amount: 90, label: 'Mountain pass' },
-    ],
-  },
-  SGD: {
-    code: 'SGD',
-    name: 'Singapore Dollar',
-    symbol: 'S$',
-    flag: '🇸🇬',
-    baseRateToUsd: 1.34,
-    precision: 2,
-    sampleItems: [
-      { amount: 5, label: 'Hawker meal' },
-      { amount: 25, label: 'Bistro lunch' },
-      { amount: 75, label: 'Rooftop dinner' },
-    ],
-  },
-  KRW: {
-    code: 'KRW',
-    name: 'South Korean Won',
-    symbol: '₩',
-    flag: '🇰🇷',
-    baseRateToUsd: 1390,
-    precision: 0,
-    sampleItems: [
-      { amount: 5000, label: 'Street snack' },
-      { amount: 12000, label: 'Bibimbap lunch' },
-      { amount: 40000, label: 'KBBQ dinner' },
-    ],
-  },
-  THB: {
-    code: 'THB',
-    name: 'Thai Baht',
-    symbol: '฿',
-    flag: '🇹🇭',
-    baseRateToUsd: 34.6,
-    precision: 0,
-    sampleItems: [
-      { amount: 80, label: 'Pad Thai street stall' },
-      { amount: 250, label: 'Cafe lunch' },
-      { amount: 900, label: 'Seafood dinner' },
-    ],
-  },
-  CLP: {
-    code: 'CLP',
-    name: 'Chilean Peso',
-    symbol: 'CLP$',
-    flag: '🇨🇱',
-    baseRateToUsd: 955,
-    precision: 0,
-    sampleItems: [
-      { amount: 3500, label: 'Empanada snack' },
-      { amount: 15000, label: 'Patagonian lunch' },
-      { amount: 45000, label: 'Asado dinner' },
-    ],
-  },
-};
+export { SHARED_CURRENCIES as SUPPORTED_CURRENCIES } from '../lib/currencies';
+export type { CurrencyInfo } from '../lib/currencies';
+const SUPPORTED_CURRENCIES = SHARED_CURRENCIES;
+
 
 interface CurrencyConverterProps {
   destinationCurrency: string;
@@ -173,43 +21,36 @@ interface CurrencyConverterProps {
 
 export const CurrencyConverter: React.FC<CurrencyConverterProps> = ({
   destinationCurrency = 'JPY',
-  homeCurrency = 'USD',
+  homeCurrency = 'PHP',
   onApplyToExpenseDraft,
   className = '',
   onRateChange,
 }) => {
-  // Primary conversion state
-  // fromCurrency starts as destination currency (e.g. JPY in Japan), toCurrency as user home (USD)
-  const [fromCode, setFromCode] = useState<string>(() => {
-    return SUPPORTED_CURRENCIES[destinationCurrency] ? destinationCurrency : 'JPY';
-  });
+  // Primary conversion state: defaults to converting FROM Philippine Pesos (PHP) to destination currency
+  const [fromCode, setFromCode] = useState<string>('PHP');
   const [toCode, setToCode] = useState<string>(() => {
-    return SUPPORTED_CURRENCIES[homeCurrency] ? homeCurrency : 'USD';
+    return destinationCurrency !== 'PHP' && SUPPORTED_CURRENCIES[destinationCurrency]
+      ? destinationCurrency
+      : 'USD';
   });
 
-  // When parent changes destination or home currency (e.g. switching trips), update defaults
+  // When parent changes destination currency, update target
   useEffect(() => {
-    if (SUPPORTED_CURRENCIES[destinationCurrency]) {
-      setFromCode(destinationCurrency);
+    if (destinationCurrency && destinationCurrency !== 'PHP' && SUPPORTED_CURRENCIES[destinationCurrency]) {
+      setToCode(destinationCurrency);
     }
   }, [destinationCurrency]);
 
-  useEffect(() => {
-    if (SUPPORTED_CURRENCIES[homeCurrency]) {
-      setToCode(homeCurrency);
-    }
-  }, [homeCurrency]);
-
   // Amount inputs (synced)
-  const [fromAmountStr, setFromAmountStr] = useState<string>('5000');
+  const [fromAmountStr, setFromAmountStr] = useState<string>('1000');
   const [lastEdited, setLastEdited] = useState<'from' | 'to'>('from');
 
-  // Real-time Mock Rates Engine
-  // Stores current micro-fluctuated rates against USD
+  // Real-time Rates Engine (PHP base)
   const [rates, setRates] = useState<Record<string, number>>(() => {
     const initial: Record<string, number> = {};
+    const phpBase = SUPPORTED_CURRENCIES.PHP?.baseRateToUsd || 58.2;
     Object.keys(SUPPORTED_CURRENCIES).forEach((code) => {
-      initial[code] = SUPPORTED_CURRENCIES[code].baseRateToUsd;
+      initial[code] = SUPPORTED_CURRENCIES[code].baseRateToUsd / phpBase;
     });
     return initial;
   });
@@ -225,10 +66,9 @@ export const CurrencyConverter: React.FC<CurrencyConverterProps> = ({
 
   // Calculate live exchange rate from fromCode to toCode
   const exchangeRate = useMemo(() => {
-    const fromRateToUsd = rates[fromCode] || SUPPORTED_CURRENCIES[fromCode]?.baseRateToUsd || 1.0;
-    const toRateToUsd = rates[toCode] || SUPPORTED_CURRENCIES[toCode]?.baseRateToUsd || 1.0;
-    // 1 unit of fromCode = (toRateToUsd / fromRateToUsd) units of toCode
-    return toRateToUsd / fromRateToUsd;
+    const fromRate = rates[fromCode] || 1.0;
+    const toRate = rates[toCode] || 1.0;
+    return fromRate > 0 ? toRate / fromRate : 0;
   }, [fromCode, toCode, rates]);
 
   // Inverse rate
@@ -276,27 +116,64 @@ export const CurrencyConverter: React.FC<CurrencyConverterProps> = ({
     return () => clearInterval(interval);
   }, [isLiveFeedActive, fromCode, toCode]);
 
+  // Fetch live rates from Route Handler on mount
+  useEffect(() => {
+    let isMounted = true;
+    async function loadRates() {
+      try {
+        const res = await fetch('/api/exchange-rates');
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && data.rates && typeof data.rates === 'object') {
+            setRates((prev) => ({
+              ...prev,
+              ...data.rates,
+            }));
+            setLastUpdatedTime(new Date());
+          }
+        }
+      } catch (err) {
+        console.warn('Using cached exchange rates:', err);
+      }
+    }
+    loadRates();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Manual refresh trigger
-  const handleManualRefresh = useCallback(() => {
+  const handleManualRefresh = useCallback(async () => {
     setIsRefreshing(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/exchange-rates');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.rates && typeof data.rates === 'object') {
+          setRates((prev) => ({
+            ...prev,
+            ...data.rates,
+          }));
+        }
+      }
+    } catch {
       setRates((prev) => {
         const next = { ...prev };
         Object.keys(next).forEach((key) => {
-          if (key !== 'USD') {
+          if (key !== 'USD' && SUPPORTED_CURRENCIES[key]) {
             const base = SUPPORTED_CURRENCIES[key].baseRateToUsd;
-            // small random variance of +/- 0.3%
             const variance = 1 + (Math.random() * 0.006 - 0.003);
             next[key] = Number((base * variance).toFixed(4));
           }
         });
         return next;
       });
+    } finally {
       setLastUpdatedTime(new Date());
       setIsRefreshing(false);
       setLastTickDirection('up');
       setTimeout(() => setLastTickDirection(null), 1200);
-    }, 400);
+    }
   }, []);
 
   // Format currency value helper
@@ -373,16 +250,16 @@ export const CurrencyConverter: React.FC<CurrencyConverterProps> = ({
                     ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-400 scale-105'
                     : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
                 }`}
-                title="Live simulated mock exchange rates feed"
+                title="Live mid-market currency rates feed"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span>LIVE MOCK</span>
+                <span>LIVE RATES</span>
                 {lastTickDirection === 'up' && <span className="text-[9px]">▲</span>}
                 {lastTickDirection === 'down' && <span className="text-[9px]">▼</span>}
               </div>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Live mid-market rates for local {destinationCurrency} &amp; home {homeCurrency}
+              Approximate rates converting from Philippine Pesos (₱) to world currencies
             </p>
           </div>
         </div>
@@ -512,18 +389,13 @@ export const CurrencyConverter: React.FC<CurrencyConverterProps> = ({
                   )}
                 </span>
 
-                {/* Currency Dropdown Selector */}
-                <select
-                  value={fromCode}
-                  onChange={(e) => setFromCode(e.target.value)}
-                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg px-2 py-1 text-xs font-bold cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  {Object.values(SUPPORTED_CURRENCIES).map((curr) => (
-                    <option key={curr.code} value={curr.code}>
-                      {curr.flag} {curr.code} - {curr.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-36 sm:w-44">
+                  <SearchableCurrencySelect
+                    compact
+                    value={fromCode}
+                    onChange={(code) => setFromCode(code)}
+                  />
+                </div>
               </div>
 
               {/* Amount Input */}
@@ -582,18 +454,14 @@ export const CurrencyConverter: React.FC<CurrencyConverterProps> = ({
                   )}
                 </span>
 
-                {/* Currency Dropdown Selector */}
-                <select
-                  value={toCode}
-                  onChange={(e) => setToCode(e.target.value)}
-                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 rounded-lg px-2 py-1 text-xs font-bold cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  {Object.values(SUPPORTED_CURRENCIES).map((curr) => (
-                    <option key={curr.code} value={curr.code}>
-                      {curr.flag} {curr.code} - {curr.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="w-36 sm:w-44">
+                  <SearchableCurrencySelect
+                    compact
+                    dropdownAlign="right"
+                    value={toCode}
+                    onChange={(code) => setToCode(code)}
+                  />
+                </div>
               </div>
 
               {/* Converted Amount Output */}
@@ -853,10 +721,10 @@ export const CurrencyConverter: React.FC<CurrencyConverterProps> = ({
       {/* Footer Info: Rate source timestamp & live note */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-3 mt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-400 dark:text-slate-500">
         <div className="flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-[14px] text-emerald-500">lock</span>
-          <span>Interbank mid-market live mock quote • No delay</span>
+          <span className="material-symbols-outlined text-[14px] text-emerald-500">info</span>
+          <span>Approximate mid-market quote • For informational reference</span>
         </div>
-        <div>Last updated at {formattedTime} (simulated live feed)</div>
+        <div>Last updated at {formattedTime} (approximate rates feed)</div>
       </div>
     </div>
   );

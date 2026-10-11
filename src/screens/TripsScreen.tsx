@@ -1,21 +1,34 @@
+'use client';
+
 import React, { useState, useMemo } from 'react';
 import { useTravelStore } from '../store';
 import { Trip, TripStatus } from '../types';
+import { formatCurrency } from '@/lib/currencies';
 
-export const TripsScreen: React.FC = () => {
+interface TripsScreenProps {
+  initialTrips?: Trip[];
+}
+
+export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
   const {
     trips,
+    setTrips,
     setActiveTripId,
     openEditTripModal,
     toggleBookmarkTrip,
     setActiveTab,
   } = useTravelStore();
 
+  React.useEffect(() => {
+    if (initialTrips !== undefined) {
+      setTrips(initialTrips);
+    }
+  }, [initialTrips, setTrips]);
+
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | TripStatus>('all');
   const [sortBy, setSortBy] = useState('departure-soonest');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [isStatesDrawerOpen, setIsStatesDrawerOpen] = useState(false);
 
   // Filter & sort logic
   const filteredTrips = useMemo(() => {
@@ -113,8 +126,8 @@ export const TripsScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Comprehensive Planning Analytics Strip: Snap-scroll on mobile, 4-col grid on md+ */}
-      <div className="flex md:grid md:grid-cols-4 gap-space-md overflow-x-auto md:overflow-x-visible snap-x snap-mandatory no-scrollbar pb-2 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
+      {/* Comprehensive Planning Analytics Strip: Snap-scroll on mobile, 2-col on md, 4-col on lg */}
+      <div className="flex md:grid md:grid-cols-2 lg:grid-cols-4 gap-space-md overflow-x-auto md:overflow-x-visible snap-x snap-mandatory no-scrollbar pb-2 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
         <div className="min-w-[70%] sm:min-w-[220px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col justify-between border border-surface-container-high/40">
           <div className="flex items-center justify-between text-on-surface-variant font-caption text-caption">
             <span className="font-badge uppercase tracking-wider text-badge font-bold">
@@ -123,9 +136,11 @@ export const TripsScreen: React.FC = () => {
             <span className="material-symbols-outlined text-primary text-[18px]">calendar_month</span>
           </div>
           <div className="mt-2">
-            <span className="font-page-title text-page-title text-on-surface font-bold">44</span>
+            <span className="font-page-title text-page-title text-on-surface font-bold">
+              {trips.reduce((acc, t) => acc + (t.daysCount || 0), 0)}
+            </span>
             <span className="font-caption text-caption text-on-surface-variant ml-1">
-              days across 2025-26
+              {trips.length > 0 ? `days across ${trips.length} ${trips.length === 1 ? 'trip' : 'trips'}` : 'days scheduled'}
             </span>
           </div>
         </div>
@@ -135,11 +150,21 @@ export const TripsScreen: React.FC = () => {
             <span className="font-badge uppercase tracking-wider text-badge font-bold">Active Log</span>
             <span className="material-symbols-outlined text-secondary text-[18px]">near_me</span>
           </div>
-          <div className="mt-2 flex items-baseline gap-1">
-            <span className="font-page-title text-page-title text-secondary font-bold">Amalfi Coast</span>
-            <span className="font-badge text-badge text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded-full font-bold">
-              Day 3/7
-            </span>
+          <div className="mt-2 flex items-baseline gap-1 truncate">
+            {trips.length > 0 ? (
+              <>
+                <span className="font-page-title text-page-title text-secondary font-bold truncate">
+                  {trips[0].destinationRegion || trips[0].title}
+                </span>
+                <span className="font-badge text-badge text-on-surface-variant bg-surface-container px-1.5 py-0.5 rounded-full font-bold shrink-0">
+                  {trips[0].status?.toUpperCase() || 'PLANNED'}
+                </span>
+              </>
+            ) : (
+              <span className="font-caption text-caption text-on-surface-variant">
+                No active expedition
+              </span>
+            )}
           </div>
         </div>
 
@@ -151,7 +176,9 @@ export const TripsScreen: React.FC = () => {
             <span className="material-symbols-outlined text-primary-container text-[18px]">pin_drop</span>
           </div>
           <div className="mt-2">
-            <span className="font-page-title text-page-title text-on-surface font-bold">38</span>
+            <span className="font-page-title text-page-title text-on-surface font-bold">
+              {trips.reduce((acc, t) => acc + (t.destinations?.length || (t.destinationRegion ? 1 : 0)), 0)}
+            </span>
             <span className="font-caption text-caption text-on-surface-variant ml-1">
               curated locations
             </span>
@@ -169,11 +196,13 @@ export const TripsScreen: React.FC = () => {
           </div>
           <div className="mt-2 flex items-center justify-between">
             <div>
-              <span className="font-page-title text-page-title text-on-surface font-bold">$7,440</span>
+              <span className="font-page-title text-page-title text-on-surface font-bold">
+                {trips[0]?.currency || 'USD'} {trips.reduce((acc, t) => acc + (t.budget || t.estimatedBudget || 0), 0).toLocaleString()}
+              </span>
               <span className="font-caption text-caption text-on-surface-variant ml-1">total allocation</span>
             </div>
             <span className="bg-surface-container-low text-primary font-badge text-badge px-2 py-0.5 rounded-full font-bold">
-              92% Target
+              {trips.length > 0 ? 'Active' : '0% Target'}
             </span>
           </div>
         </div>
@@ -244,16 +273,6 @@ export const TripsScreen: React.FC = () => {
                 <span className="material-symbols-outlined text-[20px]">view_agenda</span>
               </button>
             </div>
-
-            {/* Drawer Demo Toggle */}
-            <button
-              onClick={() => setIsStatesDrawerOpen(!isStatesDrawerOpen)}
-              className="h-[36px] px-3 rounded-lg bg-surface-variant/50 hover:bg-surface-variant text-primary font-caption text-caption flex items-center gap-1.5 transition-colors cursor-pointer"
-              type="button"
-            >
-              <span className="material-symbols-outlined text-[16px]">visibility</span>
-              <span>Sample States</span>
-            </button>
           </div>
         </div>
 
@@ -323,93 +342,91 @@ export const TripsScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Expandable Showcase: Empty & Loading States Drawer */}
-      {isStatesDrawerOpen && (
-        <div className="flex flex-col gap-space-md p-space-md bg-surface-container-low rounded-xl border border-surface-container-high/60 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary text-[20px]">developer_mode</span>
-              <span className="font-item-title text-item-title text-primary font-semibold">
-                State Mockups (Empty Search &amp; Skeleton Previews)
-              </span>
-            </div>
+      {/* Trips Grid / List View */}
+      {filteredTrips.length === 0 ? (
+        <div className="bg-surface-container-lowest p-space-xl rounded-xl flex flex-col items-center justify-center text-center shadow-sm border border-surface-container-high/40 py-16 animate-fade-in">
+          <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant mb-space-sm">
+            <span className="material-symbols-outlined text-[32px]">travel_explore</span>
+          </div>
+          <h4 className="font-item-title text-item-title text-on-surface font-semibold text-lg">
+            {searchQuery ? 'No trips matching search' : 'No trips planned yet'}
+          </h4>
+          <p className="font-body text-body text-on-surface-variant mt-1 max-w-sm">
+            {searchQuery
+              ? 'No itinerary records match your criteria. Clear applied filters or start a fresh expedition.'
+              : 'Create your first expedition itinerary to begin planning destinations, budgets, and activities.'}
+          </p>
+          <div className="mt-space-md flex gap-space-sm">
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="h-[36px] px-4 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-primary font-button text-caption transition-colors cursor-pointer font-semibold"
+                type="button"
+              >
+                Clear Filters
+              </button>
+            )}
             <button
-              onClick={() => setIsStatesDrawerOpen(false)}
-              className="text-on-surface-variant hover:text-on-surface p-1 rounded-md cursor-pointer"
+              onClick={() => openEditTripModal()}
+              className="h-[36px] px-5 rounded-lg bg-secondary hover:bg-secondary-container text-on-secondary font-button text-caption shadow-sm cursor-pointer font-semibold flex items-center gap-1.5"
               type="button"
             >
-              <span className="material-symbols-outlined text-[18px]">close</span>
+              <span className="material-symbols-outlined text-[18px]">add</span>
+              <span>+ Create First Trip</span>
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
-            {/* 1. Empty State Card */}
-            <div className="bg-surface-container-lowest p-space-lg rounded-xl flex flex-col items-center justify-center text-center shadow-sm">
-              <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant mb-space-sm">
-                <span className="material-symbols-outlined text-[32px]">travel_explore</span>
-              </div>
-              <h4 className="font-item-title text-item-title text-on-surface font-semibold">
-                No trips matching search
-              </h4>
-              <p className="font-body text-body text-on-surface-variant mt-1 max-w-sm">
-                No itinerary records match your criteria. Clear applied filters or start a fresh expedition.
-              </p>
-              <div className="mt-space-md flex gap-space-sm">
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="h-[36px] px-4 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-primary font-button text-caption transition-colors cursor-pointer font-semibold"
-                  type="button"
-                >
-                  Clear Filters
-                </button>
-                <button
-                  onClick={() => openEditTripModal()}
-                  className="h-[36px] px-4 rounded-lg bg-secondary text-on-secondary font-button text-caption shadow-sm cursor-pointer font-semibold"
-                  type="button"
-                >
-                  + New Trip
-                </button>
-              </div>
-            </div>
-
-            {/* 2. Skeleton Loading Card */}
-            <div className="bg-surface-container-lowest p-space-md rounded-xl shadow-sm flex flex-col gap-3 animate-pulse">
-              <div className="w-full h-36 bg-surface-container rounded-lg" />
-              <div className="flex justify-between items-center mt-1">
-                <div className="h-4 w-28 bg-surface-container rounded" />
-                <div className="h-5 w-16 bg-surface-container rounded-full" />
-              </div>
-              <div className="h-6 w-3/4 bg-surface-container rounded" />
-              <div className="flex gap-2">
-                <div className="h-4 w-20 bg-surface-container rounded" />
-                <div className="h-4 w-24 bg-surface-container rounded" />
-              </div>
-              <div className="h-8 w-full bg-surface-container rounded mt-2" />
-            </div>
-          </div>
         </div>
-      )}
-
-      {/* Trips Grid / List View */}
-      <div
-        className={
-          viewMode === 'grid'
-            ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-lg'
-            : 'grid grid-cols-1 gap-space-md'
-        }
-      >
-        {filteredTrips.map((trip) => (
+      ) : (
+        <div
+          className={
+            viewMode === 'grid'
+              ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-space-lg'
+              : 'grid grid-cols-1 gap-space-md'
+          }
+        >
+          {filteredTrips.map((trip) => (
           <article
             key={trip.id}
             className="bg-surface-container-lowest rounded-xl shadow-sm hover:shadow-md transition-shadow flex flex-col overflow-hidden group border border-surface-container-high/40"
           >
             {/* Media Header */}
             <div className="relative h-52 w-full overflow-hidden">
-              <img
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                alt={trip.coverImageAlt}
-                src={trip.coverImage}
-              />
+              {trip.coverImage ? (
+                <img
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  alt={trip.coverImageAlt || trip.title}
+                  src={trip.coverImage}
+                  loading="lazy"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-primary-container/80 via-surface-container-high to-surface-container relative flex items-center justify-center overflow-hidden">
+                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--color-primary)_0%,_transparent_70%)] opacity-20" />
+                  <span className="material-symbols-outlined text-[48px] text-primary/40 group-hover:scale-110 transition-transform duration-500">
+                    explore
+                  </span>
+                </div>
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-primary/80 via-transparent to-black/20" />
+
+              {/* Cover Photo Credit Overlay */}
+              {trip.coverImage && trip.coverImageCredit && (
+                <div className="absolute bottom-2 right-2 max-w-[70%] z-10 px-2 py-0.5 rounded bg-black/60 backdrop-blur-xs text-[9px] text-white/90 truncate pointer-events-auto">
+                  {trip.coverImageCreditUrl ? (
+                    <a
+                      href={trip.coverImageCreditUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className="hover:underline"
+                      title={trip.coverImageCredit}
+                    >
+                      {trip.coverImageCredit}
+                    </a>
+                  ) : (
+                    <span>{trip.coverImageCredit}</span>
+                  )}
+                </div>
+              )}
 
               {/* Status & Badge Overlays */}
               <div className="absolute top-3 left-3 flex items-center gap-1.5">
@@ -505,12 +522,12 @@ export const TripsScreen: React.FC = () => {
                       {trip.status === 'completed' ? 'Actual Logged Spent' : 'Estimated Budget'}
                     </span>
                     <span className="font-body-medium text-body text-on-surface font-bold">
-                      ${trip.estimatedBudget.toLocaleString()}
+                      {formatCurrency(trip.estimatedBudget)}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-tint/15 text-primary font-badge text-badge font-bold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-surface-tint" />
-                    <span>{trip.status === 'completed' ? 'Reconciled' : 'Within Target'}</span>
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-surface-tint/15 text-primary font-badge text-badge font-bold shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-surface-tint shrink-0" />
+                    <span className="truncate">{trip.status === 'completed' ? 'Reconciled' : 'Within Target'}</span>
                   </div>
                 </div>
 
@@ -574,6 +591,7 @@ export const TripsScreen: React.FC = () => {
             Map dates, organize pins, pin stays, and manage estimates without spam or checkout flows.
           </p>
           <button
+            onClick={() => openEditTripModal()}
             className="mt-space-md h-[38px] px-4 rounded-lg bg-secondary text-on-secondary font-button text-caption shadow-sm hover:bg-secondary-container transition-colors cursor-pointer font-semibold"
             type="button"
           >
@@ -581,6 +599,7 @@ export const TripsScreen: React.FC = () => {
           </button>
         </div>
       </div>
+      )}
 
       {/* Interactive Map Explorer Overlay Banner */}
       <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col md:flex-row items-center justify-between gap-space-md border border-surface-container-high/40">

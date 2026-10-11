@@ -1,8 +1,29 @@
+# Dependencies
 node_modules/
+/.pnp
+.pnp.js
+
+# Testing & Coverage
+coverage/
+
+# Next.js build output
+.next/
+out/
 build/
 dist/
-coverage/
+
+# Misc
 .DS_Store
+*.pem
 *.log
+*.tsbuildinfo
+
+# Local environment files
 .env*
 !.env.example
+
+# Supabase
+supabase/.temp/
+
+# Vercel
+.vercel

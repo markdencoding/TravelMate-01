@@ -1,13 +1,19 @@
+'use client';
+
 import React, { useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTravelStore } from '../store';
 import { TabType } from '../types';
+import { createClient } from '@/lib/supabase/client';
 
 export const Sidebar: React.FC = () => {
+  const pathname = usePathname();
+  const router = useRouter();
   const {
-    activeTab,
-    setActiveTab,
     openEditTripModal,
     unreadNotificationsCount,
+    clearUserData,
     resetToSampleData,
     currentUser,
     darkMode,
@@ -20,15 +26,14 @@ export const Sidebar: React.FC = () => {
 
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
 
-  const navItems: { id: TabType; label: string; icon: string; secure?: boolean }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { id: 'trips', label: 'Trips', icon: 'luggage' },
-    { id: 'explore-map', label: 'Explore / Map', icon: 'map' },
-    { id: 'expenses', label: 'Expenses', icon: 'payments' },
-    { id: 'calendar', label: 'Calendar', icon: 'calendar_today' },
-    { id: 'dossier', label: 'Dossier PDF', icon: 'description' },
-    { id: 'settings', label: 'Settings', icon: 'settings' },
-    { id: 'admin', label: 'Admin', icon: 'admin_panel_settings', secure: true },
+  const navItems: { id: TabType; href: string; label: string; icon: string; secure?: boolean }[] = [
+    { id: 'dashboard', href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
+    { id: 'trips', href: '/trips', label: 'Trips', icon: 'luggage' },
+    { id: 'explore-map', href: '/explore', label: 'Explore / Map', icon: 'map' },
+    { id: 'expenses', href: '/expenses', label: 'Expenses', icon: 'payments' },
+    { id: 'calendar', href: '/calendar', label: 'Calendar', icon: 'calendar_today' },
+    { id: 'dossier', href: '/dossier', label: 'Dossier PDF', icon: 'description' },
+    { id: 'settings', href: '/settings', label: 'Settings', icon: 'settings' },
   ];
 
   return (
@@ -41,8 +46,8 @@ export const Sidebar: React.FC = () => {
       <div className="flex flex-col gap-4 w-full">
         {/* Header: Logo and Collapse/Expand Toggle */}
         <div className="flex items-center justify-between w-full px-1">
-          <div
-            onClick={() => setActiveTab('dashboard')}
+          <Link
+            href="/dashboard"
             className={`flex items-center gap-2.5 cursor-pointer group ${
               isSidebarCollapsed ? 'justify-center w-full' : ''
             }`}
@@ -61,7 +66,7 @@ export const Sidebar: React.FC = () => {
                 </span>
               </div>
             )}
-          </div>
+          </Link>
 
           {/* Minimize / Expand Toggle Button */}
           {!isSidebarCollapsed && (
@@ -116,12 +121,14 @@ export const Sidebar: React.FC = () => {
         {/* Navigation Items */}
         <nav className="flex flex-col gap-1 w-full pt-1">
           {navItems.map((item) => {
-            const isActive = activeTab === item.id;
+            const isActive =
+              pathname === item.href ||
+              (item.href !== '/dashboard' && pathname?.startsWith(item.href));
 
             return (
               <div key={item.id} className="relative group/nav w-full">
-                <button
-                  onClick={() => setActiveTab(item.id)}
+                <Link
+                  href={item.href}
                   className={`w-full flex items-center rounded-xl transition-all cursor-pointer ${
                     isSidebarCollapsed
                       ? 'justify-center h-10 px-0'
@@ -131,7 +138,6 @@ export const Sidebar: React.FC = () => {
                       ? 'bg-primary text-white font-bold shadow-xs shadow-primary/20'
                       : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-slate-100'
                   }`}
-                  type="button"
                   title={isSidebarCollapsed ? item.label : undefined}
                 >
                   <div className="flex items-center gap-2.5">
@@ -159,7 +165,7 @@ export const Sidebar: React.FC = () => {
                   {isSidebarCollapsed && item.id === 'dashboard' && unreadNotificationsCount > 0 && (
                     <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-1.5 right-2" />
                   )}
-                </button>
+                </Link>
 
                 {/* Floating Tooltip Pill for Collapsed Mode */}
                 {isSidebarCollapsed && (
@@ -178,72 +184,49 @@ export const Sidebar: React.FC = () => {
 
       {/* Bottom Section: Dark Mode Toggle, Alerts, Profile */}
       <div className="w-full flex flex-col gap-2 pt-3 border-t border-slate-100 dark:border-slate-800/80">
-        {/* Dark Mode & System Auto-Sync Switcher */}
+        {/* Quick Theme Toggle (Desktop Sidebar) */}
         {isSidebarCollapsed ? (
           <button
             type="button"
-            onClick={() => {
-              if (themePreference === 'system') setThemePreference('light');
-              else if (themePreference === 'light') setThemePreference('dark');
-              else setThemePreference('system');
-            }}
+            suppressHydrationWarning
+            onClick={toggleDarkMode}
             className="w-10 h-10 mx-auto rounded-xl flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-            title={`Current Theme: ${themePreference === 'system' ? 'Auto (System Sync)' : darkMode ? 'Dark Mode' : 'Light Mode'} (Click to cycle)`}
+            title={`Toggle Theme: currently ${darkMode ? 'Dark Mode' : 'Light Mode'}`}
+            aria-label="Toggle theme"
           >
             <span
+              suppressHydrationWarning
               className={`material-symbols-outlined text-[20px] ${
                 darkMode ? 'text-amber-400' : 'text-amber-600'
               }`}
             >
-              {themePreference === 'system' ? 'brightness_auto' : darkMode ? 'dark_mode' : 'light_mode'}
+              {darkMode ? 'dark_mode' : 'light_mode'}
             </span>
           </button>
         ) : (
-          <div className="flex items-center justify-between bg-slate-100 dark:bg-slate-800/80 rounded-xl p-1 shadow-2xs gap-0.5">
-            <button
-              type="button"
-              onClick={() => setThemePreference('light')}
-              className={`flex-1 flex items-center justify-center gap-1 py-1 rounded-lg text-[11px] font-semibold cursor-pointer transition-all ${
-                themePreference === 'light'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-              title="Force Light Mode (Crisp White)"
-            >
-              <span className="material-symbols-outlined text-[14px] text-amber-500">light_mode</span>
-              <span>Light</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setThemePreference('dark')}
-              className={`flex-1 flex items-center justify-center gap-1 py-1 rounded-lg text-[11px] font-semibold cursor-pointer transition-all ${
-                themePreference === 'dark'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-              title="Force Dark Mode (Night Explorer)"
-            >
-              <span className="material-symbols-outlined text-[14px] text-indigo-400">
-                dark_mode
+          <button
+            type="button"
+            suppressHydrationWarning
+            onClick={toggleDarkMode}
+            className="w-full flex items-center justify-between px-3 py-2 bg-slate-100 dark:bg-slate-800/80 hover:bg-slate-200/80 dark:hover:bg-slate-800 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors cursor-pointer shadow-2xs"
+            title={`Switch to ${darkMode ? 'Light' : 'Dark'} Mode`}
+            aria-label={`Switch to ${darkMode ? 'Light' : 'Dark'} Mode`}
+          >
+            <div className="flex items-center gap-2">
+              <span
+                suppressHydrationWarning
+                className={`material-symbols-outlined text-[18px] ${
+                  darkMode ? 'text-amber-400' : 'text-amber-600'
+                }`}
+              >
+                {darkMode ? 'dark_mode' : 'light_mode'}
               </span>
-              <span>Dark</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setThemePreference('system')}
-              className={`flex-1 flex items-center justify-center gap-1 py-1 rounded-lg text-[11px] font-semibold cursor-pointer transition-all ${
-                themePreference === 'system'
-                  ? 'bg-emerald-600 text-white shadow-xs'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-              }`}
-              title="Auto-sync with Device / System Theme"
-            >
-              <span className="material-symbols-outlined text-[14px]">
-                brightness_auto
-              </span>
-              <span>Auto</span>
-            </button>
-          </div>
+              <span>{darkMode ? 'Dark Theme' : 'Light Theme'}</span>
+            </div>
+            <span className="text-[10px] uppercase font-mono tracking-wider text-slate-400 dark:text-slate-500">
+              {darkMode ? 'Night' : 'Day'}
+            </span>
+          </button>
         )}
 
         {/* User Profile Card */}
@@ -252,10 +235,10 @@ export const Sidebar: React.FC = () => {
             <div
               onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
               className="w-10 h-10 mx-auto rounded-xl flex items-center justify-center cursor-pointer group"
-              title={`${currentUser?.name || 'Alex Morgan'} (${currentUser?.role || 'Curator'})`}
+              title={`${currentUser?.name || 'Traveler'} (${currentUser?.role || 'Traveler'})`}
             >
               <img
-                alt={currentUser?.name || 'Curator Profile'}
+                alt={currentUser?.name || 'User Profile'}
                 className="w-8 h-8 rounded-full object-cover ring-2 ring-slate-200 dark:ring-slate-700 group-hover:ring-primary transition-all"
                 src={
                   currentUser?.avatar ||
@@ -270,7 +253,7 @@ export const Sidebar: React.FC = () => {
                 className="flex items-center gap-2.5 min-w-0 cursor-pointer flex-1"
               >
                 <img
-                  alt={currentUser?.name || 'Curator'}
+                  alt={currentUser?.name || 'Traveler'}
                   className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200 dark:ring-slate-700"
                   src={
                     currentUser?.avatar ||
@@ -279,10 +262,10 @@ export const Sidebar: React.FC = () => {
                 />
                 <div className="flex flex-col min-w-0">
                   <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate">
-                    {currentUser?.name || 'Alex Morgan'}
+                    {currentUser?.name || 'Traveler'}
                   </span>
                   <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono truncate">
-                    {currentUser?.role || 'Lead Curator'}
+                    {currentUser?.role || 'Traveler'}
                   </span>
                 </div>
               </div>
@@ -305,50 +288,44 @@ export const Sidebar: React.FC = () => {
                 isSidebarCollapsed ? 'left-full ml-2 w-48' : 'left-0 right-0'
               }`}
             >
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('settings');
-                  setIsProfileMenuOpen(false);
-                }}
+              <Link
+                href="/settings"
+                onClick={() => setIsProfileMenuOpen(false)}
                 className="flex items-center gap-2 px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-700/80 rounded-xl transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">settings</span>
                 <span>Settings &amp; Theme</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveTab('dossier');
-                  setIsProfileMenuOpen(false);
-                }}
+              </Link>
+              <Link
+                href="/dossier"
+                onClick={() => setIsProfileMenuOpen(false)}
                 className="flex items-center gap-2 px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-700/80 rounded-xl transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span>
                 <span>Printable Dossier</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  resetToSampleData();
-                  setIsProfileMenuOpen(false);
-                }}
-                className="flex items-center gap-2 px-3 py-2 text-left text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-xl transition-colors cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[16px]">restart_alt</span>
-                <span>Reset Sample Data</span>
-              </button>
+              </Link>
               <div className="h-px bg-slate-100 dark:bg-slate-700 my-0.5" />
               <button
                 type="button"
-                onClick={() => {
-                  setActiveTab('auth');
+                onClick={async () => {
                   setIsProfileMenuOpen(false);
+                  try {
+                    const supabase = createClient();
+                    await supabase.auth.signOut();
+                  } catch (err) {
+                    console.error('Sign out error:', err);
+                  }
+                  clearUserData();
+                  try {
+                    localStorage.removeItem('travelmate_last_activity');
+                    sessionStorage.clear();
+                  } catch {}
+                  window.location.href = '/login';
                 }}
-                className="flex items-center gap-2 px-3 py-2 text-left text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/80 rounded-xl transition-colors cursor-pointer"
+                className="w-full flex items-center gap-2 px-3 py-2 text-left text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/80 rounded-xl transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">logout</span>
-                <span>Switch / Sign Out</span>
+                <span>Sign Out</span>
               </button>
             </div>
           )}

@@ -1,506 +1,1204 @@
-import React, { useState, useEffect } from 'react';
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTravelStore } from '../store';
-import { Trip } from '../types';
+import { calculateDaysCount, formatDateRange } from '@/lib/dates';
+import {
+  createTripAction,
+  updateTripAction,
+  deleteTripAction,
+  getDestinationsForTripAction,
+} from '@/app/actions/trips';
+import type { PlaceItem } from '@/lib/validators/places';
+import type { RecommendationItem } from '@/lib/recommendations';
+import { PlaceSearchInput } from './PlaceSearchInput';
+import type { PlaceSuggestion } from '@/lib/validators/suggestions';
+import type { PhotoSuggestion } from '@/lib/validators/photos';
+
+export interface DestinationChipItem {
+  id?: string;
+  name: string;
+  country: string;
+  latitude: number;
+  longitude: number;
+}
+
+function toIsoDate(str: string | undefined, fallback: string): string {
+  if (!str) return fallback;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  try {
+    const d = new Date(str);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split('T')[0];
+    }
+  } catch {}
+  return fallback;
+}
 
 export const EditTripModal: React.FC = () => {
-  const { isEditTripModalOpen, setIsEditTripModalOpen, editingTrip, updateTrip, addTrip, setActiveTab } =
+  const router = useRouter();
+  const { isEditTripModalOpen, setIsEditTripModalOpen, editingTrip, updateTrip, addTrip, deleteTrip } =
     useTravelStore();
 
   const [title, setTitle] = useState('');
-  const [destinations, setDestinations] = useState<string[]>(['Kyoto', 'Tokyo']);
+  const [destinations, setDestinations] = useState<DestinationChipItem[]>([]);
   const [newDestInput, setNewDestInput] = useState('');
-  const [startDate, setStartDate] = useState('Nov 12, 2025');
-  const [endDate, setEndDate] = useState('Nov 20, 2025');
-  const [budget, setBudget] = useState('2,450.00');
-  const [currency, setCurrency] = useState('USD ($)');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [dateError, setDateError] = useState<string | null>(null);
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [budget, setBudget] = useState('');
   const [privacy, setPrivacy] = useState<'collaborative' | 'private'>('collaborative');
-  const [notes, setNotes] = useState(
-    'Autumn momiji foliage focus, Shinkansen transit between Kansai & Kanto. Machiya reservations pending confirmation at Higashiyama.'
-  );
-  const [selectedCover, setSelectedCover] = useState(
-    'https://lh3.googleusercontent.com/aida-public/AB6AXuCy6CpHnUc_dogmwH5QGi3tTz21a1T4WrRly8vyQKxK44g_W9cLpo0UHgdkv63Uz1KtQfVcW34IIh6iWk7RkYPHGXElM2P5W-sjPw94ZCd2pmuIXX6y8XjWY9GI7IwRlDaqOlEla3dWGbRxsvoyZojz1YANDFgK0vvldcpqw0jVkabegc5m_UvaM7hGmlGbYDtEXCkq5tN2YEDIcNIaf2yzwJTfBzSBLdWki02WLwcHmy5LldpAdnVANQ'
-  );
+  const [notes, setNotes] = useState('');
+
+  // Cover photo selection state (optional, defaults to empty)
+  const [selectedCover, setSelectedCover] = useState<string>('');
+  const [selectedCoverAlt, setSelectedCoverAlt] = useState<string>('');
+  const [selectedCoverCredit, setSelectedCoverCredit] = useState<string>('');
+  const [selectedCoverCreditUrl, setSelectedCoverCreditUrl] = useState<string>('');
+
+  // Destination photo suggestions state
+  const [photoSuggestions, setPhotoSuggestions] = useState<PhotoSuggestion[]>([]);
+  const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [activePhotoDestIndex, setActivePhotoDestIndex] = useState<number>(0);
+
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const coverOptions = [
-    {
-      id: 'opt-1',
-      label: 'ACTIVE',
-      url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCy6CpHnUc_dogmwH5QGi3tTz21a1T4WrRly8vyQKxK44g_W9cLpo0UHgdkv63Uz1KtQfVcW34IIh6iWk7RkYPHGXElM2P5W-sjPw94ZCd2pmuIXX6y8XjWY9GI7IwRlDaqOlEla3dWGbRxsvoyZojz1YANDFgK0vvldcpqw0jVkabegc5m_UvaM7hGmlGbYDtEXCkq5tN2YEDIcNIaf2yzwJTfBzSBLdWki02WLwcHmy5LldpAdnVANQ',
-      alt: 'Crimson Japanese maple leaves in Kyoto',
-    },
-    {
-      id: 'opt-2',
-      label: 'TOKYO',
-      url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD3D1DXkFgLmK1dyh6HOk4R6cWhuVQke6nz1pU3OOVBCiNQdkU4LaW0wT1kAT5uOKjC_xI0tCK5KHMAmX9rX1JBbLeHJakWrd5AJi9lUjJFOarhBOz1iyEBJcgnkteeln5XbhLB7wSkuNA06YDIM1XtXhO_UpNhWSp3jaXT5U0C6DhcMbDjvrUK5VfxC5v2nu9lmf30Bo9ybvBAc4mknTmeP-Qn3pLd_8Pi-_51VNc10YBOzOK-rhgimA',
-      alt: 'Illuminated Tokyo Skyline at dusk',
-    },
-    {
-      id: 'opt-3',
-      label: 'ARASHIYAMA',
-      url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD9Lpj9YhBtJm3AkZa7mTzBupzXUWhXPZfjoUOocGgT_sUj9EYP509-gKYG-Tfw4KxkOv4GJa-uijo15sP3OrldcKpjDIYWa-1HKKNfber7b7j4BZYRoYhww6t1geePHiDAuL6HrmNway_d_RC6A_EPl9GfTYlbEjoAvrY76wKZ_VtykkMok8BOJ_c_nosqYfCDa887WHh0ntoMUjTaRHq4fKoYOcDUqjZ-fPFTT1ap4sPT9XVG-PVVsA',
-      alt: 'Bamboo forest path in Arashiyama',
-    },
-    {
-      id: 'opt-4',
-      label: 'FUJI',
-      url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDtCf-qv3Z1X29GBXh4lp7gfp3h833cIURhc8suT-m0Fy8R4nKM--qDO2-LyuBJmkjkI_-FFcruxx9yNuWYb1zVQ2a0L3JsKB4sc56sjiCS_TCxxUMTdG7-ygph5EL1dmwNPvMTApOSY6fBWR1wJQMKtt8CXms7osC7NDhDMbll-1kyK-WLghC639xRtM2L6i65l4TiTUZ8YrYPw1AFumrBCX_QNCXjybFSaCG-BMS3e9jTKJX_v4flXA',
-      alt: 'Mt Fuji reflected in calm lake water',
-    },
-  ];
+  // Destination Search State
+  const [searchResults, setSearchResults] = useState<PlaceItem[]>([]);
+  const [isSearchingPlaces, setIsSearchingPlaces] = useState(false);
+  const [placeSearchError, setPlaceSearchError] = useState<string | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
+  const [activeDropdownIndex, setActiveDropdownIndex] = useState(-1);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
 
+  // Country Recommendations State
+  const [recommendations, setRecommendations] = useState<RecommendationItem[]>([]);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const [recommendedCountry, setRecommendedCountry] = useState<string>('');
+
+  // Initialize Modal form state
   useEffect(() => {
     if (editingTrip) {
       setTitle(editingTrip.title);
-      setStartDate(editingTrip.startDate);
-      setEndDate(editingTrip.endDate);
-      setBudget(editingTrip.estimatedBudget.toLocaleString('en-US', { minimumFractionDigits: 2 }));
+      setStartDate(toIsoDate(editingTrip.startDate, ''));
+      setEndDate(toIsoDate(editingTrip.endDate, ''));
+      setDateError(null);
+      setTitleError(null);
+      setBudget(
+        editingTrip.budget || editingTrip.estimatedBudget
+          ? (editingTrip.budget ?? editingTrip.estimatedBudget ?? 0).toLocaleString('en-US', {
+              minimumFractionDigits: 0,
+              maximumFractionDigits: 2,
+            })
+          : ''
+      );
       setNotes(editingTrip.notes || '');
-      setSelectedCover(editingTrip.coverImage);
+      setSelectedCover(editingTrip.coverImage || '');
+      setSelectedCoverAlt(editingTrip.coverImageAlt || '');
+      setSelectedCoverCredit(editingTrip.coverImageCredit || '');
+      setSelectedCoverCreditUrl(editingTrip.coverImageCreditUrl || '');
       setPrivacy(editingTrip.privacy || 'collaborative');
+
+      // Load destinations from database
+      getDestinationsForTripAction(editingTrip.id).then((res) => {
+        if (res.success && res.data && res.data.length > 0) {
+          setDestinations(
+            res.data.map((d: any) => ({
+              id: d.id,
+              name: d.name,
+              country: d.country || editingTrip.country || '',
+              latitude: d.latitude || 0,
+              longitude: d.longitude || 0,
+            }))
+          );
+        } else if (editingTrip.destinations && editingTrip.destinations.length > 0) {
+          setDestinations(
+            editingTrip.destinations.map((name) => ({
+              name,
+              country: editingTrip.country || '',
+              latitude: 0,
+              longitude: 0,
+            }))
+          );
+        } else if (editingTrip.destinationRegion) {
+          setDestinations(
+            editingTrip.destinationRegion
+              .split(' & ')
+              .map((s) => s.trim())
+              .filter(Boolean)
+              .map((name) => ({
+                name,
+                country: editingTrip.country || '',
+                latitude: 0,
+                longitude: 0,
+              }))
+          );
+        } else {
+          setDestinations([]);
+        }
+      });
     } else {
-      setTitle('New Kyoto Journey');
-      setStartDate('Nov 12, 2025');
-      setEndDate('Nov 20, 2025');
-      setBudget('2,450.00');
+      // Create new trip: start completely clean with NO demo content
+      setTitle('');
+      setStartDate('');
+      setEndDate('');
+      setDateError(null);
+      setTitleError(null);
+      setBudget('');
       setNotes('');
+      setSelectedCover('');
+      setSelectedCoverAlt('');
+      setSelectedCoverCredit('');
+      setSelectedCoverCreditUrl('');
+      setPhotoSuggestions([]);
+      setPhotoError(null);
+      setActivePhotoDestIndex(0);
       setPrivacy('collaborative');
+      setDestinations([]);
+      setSearchResults([]);
+      setPlaceSearchError(null);
+      setRecommendations([]);
+      setRecommendedCountry('');
     }
   }, [editingTrip, isEditTripModalOpen]);
 
+  // Fetch destination photo suggestions from /api/photos
+  useEffect(() => {
+    if (destinations.length === 0) {
+      setPhotoSuggestions([]);
+      setPhotoError(null);
+      setIsLoadingPhotos(false);
+      return;
+    }
+
+    const safeIndex =
+      activePhotoDestIndex < destinations.length ? activePhotoDestIndex : 0;
+    const targetDest = destinations[safeIndex];
+    if (!targetDest || !targetDest.name) return;
+
+    let isMounted = true;
+    setIsLoadingPhotos(true);
+    setPhotoError(null);
+
+    const params = new URLSearchParams();
+    params.set('query', targetDest.name);
+    if (targetDest.country) {
+      params.set('country', targetDest.country);
+    }
+
+    fetch(`/api/photos?${params.toString()}`)
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error('Photo provider error');
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (isMounted) {
+          if (data.success && Array.isArray(data.data)) {
+            setPhotoSuggestions(data.data);
+            setPhotoError(null);
+          } else {
+            setPhotoSuggestions([]);
+            setPhotoError(data.error?.message || null);
+          }
+        }
+      })
+      .catch((err) => {
+        if (isMounted) {
+          console.warn('Photos suggestion error:', err);
+          setPhotoSuggestions([]);
+          setPhotoError('Photo suggestions are temporarily unavailable.');
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsLoadingPhotos(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [destinations, activePhotoDestIndex]);
+
+  // Handle outside click to dismiss place dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        searchContainerRef.current &&
+        !searchContainerRef.current.contains(event.target as Node)
+      ) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Fetch Country Recommendations when country is identified
+  useEffect(() => {
+    // Detect country from chosen destinations
+    const foundCountry =
+      destinations.find((d) => d.country && d.country.trim().length > 1)?.country ||
+      destinations.find((d) => ['japan', 'italy', 'france', 'spain', 'philippines', 'thailand', 'norway', 'scotland'].includes(d.name.toLowerCase()))?.name ||
+      '';
+
+    if (!foundCountry || foundCountry.trim().length < 2) {
+      setRecommendations([]);
+      setRecommendedCountry('');
+      return;
+    }
+
+    if (foundCountry.toLowerCase() === recommendedCountry.toLowerCase()) {
+      return;
+    }
+
+    let isMounted = true;
+    setIsLoadingRecommendations(true);
+    setRecommendedCountry(foundCountry);
+
+    fetch(`/api/recommendations?country=${encodeURIComponent(foundCountry)}`)
+      .then((res) => (res.ok ? res.json() : { recommendations: [] }))
+      .then((data) => {
+        if (isMounted) {
+          setRecommendations(Array.isArray(data.recommendations) ? data.recommendations : []);
+          setIsLoadingRecommendations(false);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setRecommendations([]);
+          setIsLoadingRecommendations(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [destinations, recommendedCountry]);
+
   if (!isEditTripModalOpen) return null;
 
-  const handleAddDest = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && newDestInput.trim()) {
+  // Search Places through /api/places (Nominatim fallback)
+  const handlePerformSearch = async (queryText?: string) => {
+    const q = (typeof queryText === 'string' ? queryText : newDestInput).trim();
+    if (!q) return;
+
+    setIsSearchingPlaces(true);
+    setPlaceSearchError(null);
+    setHasSearched(true);
+    setIsDropdownOpen(true);
+    setActiveDropdownIndex(-1);
+
+    try {
+      const res = await fetch(`/api/places?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        setPlaceSearchError(data.error || `Search failed with status ${res.status}`);
+        setSearchResults([]);
+      } else {
+        setSearchResults(data.places || []);
+      }
+    } catch {
+      setPlaceSearchError('Unable to connect to place service. Please try again.');
+      setSearchResults([]);
+    } finally {
+      setIsSearchingPlaces(false);
+    }
+  };
+
+  const handleSelectSuggestion = (suggestion: PlaceSuggestion) => {
+    // Prevent duplicate destinations by case-insensitive name
+    const alreadyExists = destinations.some(
+      (d) => d.name.toLowerCase() === suggestion.name.toLowerCase()
+    );
+
+    if (!alreadyExists) {
+      const isCountry = suggestion.kind === 'country';
+      const newChip: DestinationChipItem = {
+        id: suggestion.id,
+        name: suggestion.name,
+        country: isCountry ? suggestion.name : (suggestion.country || ''),
+        latitude: suggestion.latitude || 0,
+        longitude: suggestion.longitude || 0,
+      };
+      setDestinations((prev) => [...prev, newChip]);
+    }
+
+    setSearchResults([]);
+    setIsDropdownOpen(false);
+    setPlaceSearchError(null);
+  };
+
+  const handleSelectPlace = (place: PlaceItem) => {
+    // Prevent duplicate destinations by name
+    const alreadyExists = destinations.some(
+      (d) => d.name.toLowerCase() === place.name.toLowerCase()
+    );
+
+    if (!alreadyExists) {
+      const newChip: DestinationChipItem = {
+        id: place.id,
+        name: place.name,
+        country: place.country || '',
+        latitude: place.latitude || 0,
+        longitude: place.longitude || 0,
+      };
+      setDestinations((prev) => [...prev, newChip]);
+    }
+
+    setNewDestInput('');
+    setSearchResults([]);
+    setIsDropdownOpen(false);
+    setActiveDropdownIndex(-1);
+    setPlaceSearchError(null);
+  };
+
+  const handleAddRecommendation = (rec: RecommendationItem) => {
+    const alreadyExists = destinations.some(
+      (d) => d.name.toLowerCase() === rec.name.toLowerCase()
+    );
+    if (!alreadyExists) {
+      setDestinations((prev) => [
+        ...prev,
+        {
+          id: rec.id,
+          name: rec.name,
+          country: rec.country,
+          latitude: rec.latitude,
+          longitude: rec.longitude,
+        },
+      ]);
+    }
+  };
+
+  const handleRemoveDest = (nameToRemove: string) => {
+    setDestinations((prev) => prev.filter((d) => d.name !== nameToRemove));
+  };
+
+  // Keyboard Navigation for Combobox
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setDestinations([...destinations, newDestInput.trim()]);
-      setNewDestInput('');
+      if (!isDropdownOpen && searchResults.length > 0) {
+        setIsDropdownOpen(true);
+      }
+      setActiveDropdownIndex((prev) =>
+        prev < searchResults.length - 1 ? prev + 1 : 0
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveDropdownIndex((prev) =>
+        prev > 0 ? prev - 1 : searchResults.length - 1
+      );
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (isDropdownOpen && activeDropdownIndex >= 0 && searchResults[activeDropdownIndex]) {
+        handleSelectPlace(searchResults[activeDropdownIndex]);
+      } else {
+        handlePerformSearch();
+      }
+    } else if (e.key === 'Escape') {
+      setIsDropdownOpen(false);
     }
   };
 
-  const handleRemoveDest = (d: string) => {
-    setDestinations(destinations.filter((item) => item !== d));
-  };
+  const isTitleValid = title.trim().length >= 1 && title.trim().length <= 60;
+  const hasValidDates = Boolean(
+    startDate &&
+      endDate &&
+      /^\d{4}-\d{2}-\d{2}$/.test(startDate) &&
+      /^\d{4}-\d{2}-\d{2}$/.test(endDate) &&
+      endDate >= startDate
+  );
+  const calculatedDays = hasValidDates ? calculateDaysCount(startDate, endDate) : null;
 
-  const handleAddSuggested = (d: string) => {
-    if (!destinations.includes(d)) {
-      setDestinations([...destinations, d]);
+  const handleSave = async () => {
+    if (!title.trim()) {
+      setTitleError('Trip title is required');
+      return;
     }
-  };
+    if (title.trim().length > 60) {
+      setTitleError('Trip title cannot exceed 60 characters');
+      return;
+    }
+    setTitleError(null);
 
-  const handleSave = () => {
+    if (!startDate || !endDate) {
+      setDateError('Please select both start and end dates');
+      return;
+    }
+
+    if (endDate < startDate) {
+      setDateError('End date cannot be before start date');
+      return;
+    }
+    setDateError(null);
+
     setIsSaving(true);
-    const parsedBudget = parseFloat(budget.replace(/[^0-9.]/g, '')) || 2450;
+    const parsedBudget = parseFloat(budget.replace(/[^0-9.]/g, '')) || 0;
+    const computedDays = calculateDaysCount(startDate, endDate);
+    const computedRange = formatDateRange(startDate, endDate);
 
-    setTimeout(() => {
+    const derivedRegion =
+      destinations.length > 0 ? destinations.map((d) => d.name).join(' & ') : '';
+    const derivedCountry =
+      destinations.find((d) => d.country)?.country || 'Global';
+
+    try {
+      if (editingTrip) {
+        const res = await updateTripAction({
+          id: editingTrip.id,
+          title: title.trim(),
+          startDate,
+          endDate,
+          budget: parsedBudget,
+          currency: 'PHP',
+          notes,
+          coverImage: selectedCover || '',
+          coverImageAlt: selectedCover ? (selectedCoverAlt || `${title.trim()} cover`) : '',
+          coverImageCredit: selectedCover ? selectedCoverCredit : '',
+          coverImageCreditUrl: selectedCover ? selectedCoverCreditUrl : '',
+          destinationRegion: derivedRegion,
+          country: derivedCountry,
+          destinations: destinations.map((d, index) => ({
+            name: d.name,
+            country: d.country,
+            latitude: d.latitude,
+            longitude: d.longitude,
+            orderIndex: index,
+          })),
+        });
+
+        if (res.success && res.data) {
+          updateTrip(editingTrip.id, {
+            ...res.data,
+            coverImage: selectedCover || '',
+            coverImageAlt: selectedCover ? (selectedCoverAlt || `${title.trim()} cover`) : '',
+            coverImageCredit: selectedCover ? selectedCoverCredit : '',
+            coverImageCreditUrl: selectedCover ? selectedCoverCreditUrl : '',
+            destinations: destinations.map((d) => d.name),
+          });
+        } else {
+          setDateError(res.error || 'Failed to update trip.');
+          setIsSaving(false);
+          return;
+        }
+      } else {
+        const res = await createTripAction({
+          title: title.trim(),
+          destinationRegion: derivedRegion,
+          country: derivedCountry,
+          startDate,
+          endDate,
+          budget: parsedBudget,
+          currency: 'PHP',
+          notes,
+          coverImage: selectedCover || '',
+          coverImageAlt: selectedCover ? (selectedCoverAlt || `${title.trim()} cover`) : '',
+          coverImageCredit: selectedCover ? selectedCoverCredit : '',
+          coverImageCreditUrl: selectedCover ? selectedCoverCreditUrl : '',
+          destinations: destinations.map((d, index) => ({
+            name: d.name,
+            country: d.country,
+            latitude: d.latitude,
+            longitude: d.longitude,
+            orderIndex: index,
+          })),
+        });
+
+        if (res.success && res.data) {
+          addTrip({
+            ...res.data,
+            coverImage: selectedCover || '',
+            coverImageAlt: selectedCover ? (selectedCoverAlt || `${title.trim()} cover`) : '',
+            coverImageCredit: selectedCover ? selectedCoverCredit : '',
+            coverImageCreditUrl: selectedCover ? selectedCoverCreditUrl : '',
+            destinations: destinations.map((d) => d.name),
+          });
+        } else {
+          setDateError(res.error || 'Failed to create trip.');
+          setIsSaving(false);
+          return;
+        }
+      }
+    } catch (err) {
+      console.warn('Trip action fallback to local store:', err);
       if (editingTrip) {
         updateTrip(editingTrip.id, {
           title,
           startDate,
           endDate,
+          dateRange: computedRange,
+          daysCount: computedDays,
           estimatedBudget: parsedBudget,
+          budget: parsedBudget,
+          currency: 'PHP',
           notes,
-          coverImage: selectedCover,
+          coverImage: selectedCover || '',
+          coverImageAlt: selectedCover ? (selectedCoverAlt || `${title.trim()} cover`) : '',
+          coverImageCredit: selectedCover ? selectedCoverCredit : '',
+          coverImageCreditUrl: selectedCover ? selectedCoverCreditUrl : '',
           privacy,
-          destinationRegion: destinations.join(' & '),
+          destinationRegion: derivedRegion,
+          destinations: destinations.map((d) => d.name),
         });
       } else {
         addTrip({
           title: title || 'Untitled Expedition',
-          destinationRegion: destinations.join(' & ') || 'Japan',
-          country: 'Japan',
-          dateRange: `${startDate} – ${endDate}`,
+          destinationRegion: derivedRegion,
+          country: derivedCountry,
+          dateRange: computedRange,
           startDate,
           endDate,
-          daysCount: 8,
+          daysCount: computedDays,
           status: 'planned',
           statusLabel: 'PLANNED',
-          seasonTag: 'Autumn 2025',
+          seasonTag: 'Planned 2026',
           estimatedBudget: parsedBudget,
-          currency: 'USD',
+          currency: 'PHP',
           budgetCap: parsedBudget * 1.25,
-          activitiesCount: 10,
-          accommodationsCount: 2,
-          coverImage: selectedCover,
-          coverImageAlt: 'Custom travel backdrop',
-          routeLabel: `${destinations[0] || 'Start'} ➔ ${destinations[1] || 'End'}`,
+          activitiesCount: 0,
+          accommodationsCount: 0,
+          coverImage: selectedCover || '',
+          coverImageAlt: selectedCover ? (selectedCoverAlt || `${title.trim()} cover`) : '',
+          coverImageCredit: selectedCover ? selectedCoverCredit : '',
+          coverImageCreditUrl: selectedCover ? selectedCoverCreditUrl : '',
+          routeLabel: `${destinations[0]?.name || 'Start'} ➔ ${destinations[1]?.name || 'End'}`,
           notes,
           privacy,
+          destinations: destinations.map((d) => d.name),
         });
       }
+    } finally {
       setIsSaving(false);
       setIsEditTripModalOpen(false);
-      setActiveTab('dossier');
-    }, 500);
+      router.push('/trips');
+    }
+  };
+
+  const handleDeleteTrip = async () => {
+    if (!editingTrip) return;
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm(`Are you sure you want to delete "${editingTrip.title}"?`)
+    ) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteTripAction(editingTrip.id);
+    } catch (err) {
+      console.warn('Delete trip server action error:', err);
+    } finally {
+      deleteTrip(editingTrip.id);
+      setIsDeleting(false);
+      setIsEditTripModalOpen(false);
+      router.push('/trips');
+    }
   };
 
   return (
     <div
       id="modal-container"
-      className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-0 lg:p-space-md overflow-y-auto bg-inverse-surface/45 backdrop-blur-sm transition-all duration-300"
+      className="fixed inset-0 z-50 flex items-end lg:items-center justify-center p-0 lg:p-space-md overflow-y-auto bg-black/60 backdrop-blur-sm transition-all duration-300"
     >
-      <div className="relative w-full max-w-2xl bg-surface-container-lowest rounded-t-3xl lg:rounded-xl shadow-2xl flex flex-col max-h-[92vh] lg:max-h-none my-0 lg:my-auto overflow-hidden border-t lg:border border-surface-container-high/70 animate-in slide-in-from-bottom lg:zoom-in-95 duration-200">
-        {/* Mobile Drag Indicator */}
-        <div className="lg:hidden pt-3 pb-1 flex justify-center shrink-0">
-          <div className="w-12 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
-        </div>
-
-        {/* Top Colored Accent Rail */}
-        <div className="h-1.5 w-full bg-gradient-to-r from-primary-container via-secondary to-secondary-container shrink-0" />
-
+      <div
+        className="w-full max-w-[760px] bg-surface rounded-t-2xl lg:rounded-2xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden border border-surface-container-high animate-fade-in"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+      >
         {/* Modal Header */}
-        <div className="px-gutter-md pt-gutter-md pb-space-md bg-surface-container-lowest flex items-start justify-between border-b border-surface-container-high/40">
-          <div className="flex flex-col gap-1 pr-4">
-            <div className="flex items-center gap-space-xs">
-              <span className="font-badge text-badge uppercase tracking-wider text-secondary bg-secondary-fixed/50 px-2 py-0.5 rounded-full">
-                Itinerary Architect
-              </span>
-              <span className="font-caption text-caption text-on-surface-variant">• ID #TRP-8492</span>
+        <div className="px-gutter-md py-space-md bg-surface-container-low flex items-center justify-between border-b border-surface-container-high/60 shrink-0">
+          <div className="flex items-center gap-space-sm">
+            <div className="w-10 h-10 rounded-xl bg-primary-container text-on-primary flex items-center justify-center shadow-sm">
+              <span className="material-symbols-outlined text-[22px]">edit_calendar</span>
             </div>
-            <h2 className="font-page-title text-page-title text-on-surface mt-1">
-              {editingTrip ? `Edit Trip: ${editingTrip.title}` : 'Draft New Expedition'}
-            </h2>
-            <p className="font-small text-small text-on-surface-variant">
-              Draft route dates, overall budget cap, and high-level travel notes.
-            </p>
+            <div className="flex flex-col">
+              <span className="font-badge text-badge text-secondary font-mono tracking-widest uppercase">
+                {editingTrip ? 'Expedition Atelier • Edit Mode' : 'Expedition Atelier • New Route'}
+              </span>
+              <h2 id="modal-title" className="font-display font-bold text-title text-on-surface">
+                {editingTrip ? 'Edit Expedition Details' : 'Configure New Travel Route'}
+              </h2>
+            </div>
           </div>
           <button
             onClick={() => setIsEditTripModalOpen(false)}
-            aria-label="Close modal"
-            className="p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors cursor-pointer"
+            aria-label="Close dialog"
+            className="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer"
             type="button"
           >
-            <span className="material-symbols-outlined text-[22px]">close</span>
+            <span className="material-symbols-outlined text-[20px]">close</span>
           </button>
         </div>
 
-        {/* Modal Body */}
+        {/* Modal Scrollable Body */}
         <form
-          className="px-gutter-md py-space-sm flex flex-col gap-space-lg overflow-y-auto max-h-[calc(86vh-140px)]"
           onSubmit={(e) => {
             e.preventDefault();
             handleSave();
           }}
+          className="p-gutter-md overflow-y-auto flex-1 flex flex-col gap-space-lg custom-scrollbar"
         >
           {/* Field 1: Trip Title */}
           <div className="flex flex-col gap-space-xs">
             <div className="flex items-center justify-between">
-              <label
-                className="font-body-medium text-small text-on-surface flex items-center gap-1 font-semibold"
-                htmlFor="trip-title-input"
-              >
-                Trip Title <span className="text-secondary">*</span>
+              <label className="font-body-medium text-small text-on-surface font-semibold" htmlFor="trip-title-input">
+                Trip / Expedition Name *
               </label>
               <div className="flex items-center gap-1.5">
                 <span className="font-caption text-caption text-on-surface-variant">
                   {title.length}/60
                 </span>
-                <span className="flex items-center text-primary-container" title="Valid name length">
-                  <span className="material-symbols-outlined text-[16px]">check_circle</span>
-                </span>
+                {isTitleValid && (
+                  <span className="flex items-center text-primary" title="Valid name length">
+                    <span className="material-symbols-outlined text-[16px]">check_circle</span>
+                  </span>
+                )}
               </div>
             </div>
             <div className="relative">
               <input
-                className="w-full h-[44px] px-3.5 pr-10 bg-surface-container-low focus:bg-surface-container-lowest text-on-surface rounded-lg font-body text-body shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-container transition-all"
+                className={`w-full h-[44px] px-3.5 pr-10 bg-surface-container-low focus:bg-surface-container-lowest text-on-surface placeholder:text-on-surface-variant/60 rounded-lg font-body text-body shadow-sm focus:outline-none focus:ring-2 ${
+                  titleError ? 'ring-2 ring-error' : 'focus:ring-primary-container'
+                } transition-all`}
                 id="trip-title-input"
                 maxLength={60}
                 placeholder="e.g. Kyoto & Tokyo Autumn Discovery"
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (titleError && e.target.value.trim()) setTitleError(null);
+                }}
               />
-              <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-primary-container text-[20px]">
-                verified
-              </span>
+              {isTitleValid && (
+                <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-primary text-[20px]">
+                  verified
+                </span>
+              )}
             </div>
-            <span className="font-caption text-caption text-primary-container flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">done_all</span> Name available and
-              synced across connected travel boards.
-            </span>
+            {titleError && (
+              <span className="text-[11px] text-error dark:text-rose-400 font-medium">{titleError}</span>
+            )}
           </div>
 
           {/* Field 2: Target Destinations & Regions */}
-          <div className="flex flex-col gap-space-xs">
-            <label className="font-body-medium text-small text-on-surface font-semibold">
-              Target Destinations &amp; Regions
-            </label>
-            <div className="min-h-[44px] p-1.5 bg-surface-container-low rounded-lg flex flex-wrap items-center gap-1.5 focus-within:ring-2 focus-within:ring-primary-container transition-all shadow-sm">
-              {destinations.map((d) => (
-                <div
-                  key={d}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary-container text-on-primary font-caption text-caption"
-                >
-                  <span className="material-symbols-outlined text-[14px]">location_on</span>
-                  <span>{d}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveDest(d)}
-                    className="hover:text-error-container transition-colors ml-0.5 cursor-pointer"
+          <div className="flex flex-col gap-space-xs" ref={searchContainerRef}>
+            <div className="flex items-center justify-between">
+              <label className="font-body-medium text-small text-on-surface font-semibold">
+                Target Destinations &amp; Regions
+              </label>
+              <span className="font-caption text-[11px] text-on-surface-variant">
+                Live suggestions • Press Enter to search
+              </span>
+            </div>
+
+            {/* Selected Destination Chips */}
+            {destinations.length > 0 && (
+              <div className="min-h-[40px] p-2 bg-surface-container-low rounded-xl flex flex-wrap items-center gap-1.5 shadow-xs border border-surface-container-high dark:border-outline-variant">
+                {destinations.map((d) => (
+                  <div
+                    key={d.name}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary-container text-white dark:text-teal-100 font-caption text-caption shadow-xs"
                   >
-                    <span className="material-symbols-outlined text-[14px]">close</span>
-                  </button>
-                </div>
-              ))}
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-variant text-primary font-caption text-caption">
-                <span>Japan (Country)</span>
+                    <span className="material-symbols-outlined text-[14px]">location_on</span>
+                    <span className="font-medium">{d.name}</span>
+                    {d.country && (
+                      <span className="text-[10px] text-white/80 dark:text-teal-200/90 font-normal">({d.country})</span>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveDest(d.name)}
+                      className="hover:text-rose-300 dark:hover:text-rose-400 transition-colors ml-0.5 cursor-pointer p-0.5 rounded-full"
+                      title={`Remove ${d.name}`}
+                    >
+                      <span className="material-symbols-outlined text-[14px]">close</span>
+                    </button>
+                  </div>
+                ))}
               </div>
-              <input
-                className="flex-1 min-w-[130px] h-7 px-2 bg-transparent text-on-surface font-caption text-caption focus:outline-none placeholder:text-on-surface-variant"
-                placeholder="+ Add destination..."
-                type="text"
-                value={newDestInput}
-                onChange={(e) => setNewDestInput(e.target.value)}
-                onKeyDown={handleAddDest}
+            )}
+
+            {/* Reusable PlaceSearchInput Combobox */}
+            <div className="relative">
+              <PlaceSearchInput
+                id="trip-destination-search-input"
+                placeholder={
+                  destinations.length === 0
+                    ? "Search destination (e.g. Tokyo, Kyoto, Paris, Boracay)..."
+                    : "+ Add another destination..."
+                }
+                onSelectSuggestion={handleSelectSuggestion}
+                onSubmitQuery={handlePerformSearch}
               />
-            </div>
-            <div className="flex items-center gap-1.5 pt-0.5">
-              <span className="font-caption text-caption text-on-surface-variant">Recommended nearby:</span>
-              {['OSAKA', 'HAKONE', 'NARA'].map((city) => (
-                <button
-                  key={city}
-                  type="button"
-                  onClick={() => handleAddSuggested(city)}
-                  className="px-2 py-0.5 rounded-full bg-surface-container-high hover:bg-surface-container text-on-surface font-badge text-badge transition-colors cursor-pointer"
+
+              {/* Autocomplete / Search Results Dropdown Fallback */}
+              {isDropdownOpen && (
+                <div
+                  className="absolute left-0 right-0 top-full mt-1.5 bg-surface dark:bg-surface-container-high rounded-xl shadow-xl border border-surface-container-high dark:border-outline-variant z-50 overflow-hidden max-h-[260px] overflow-y-auto custom-scrollbar"
+                  role="listbox"
                 >
-                  + {city}
-                </button>
-              ))}
+                  {isSearchingPlaces ? (
+                    <div className="p-4 text-center text-xs text-on-surface-variant flex items-center justify-center gap-2">
+                      <span className="material-symbols-outlined text-[16px] animate-spin text-primary">
+                        progress_activity
+                      </span>
+                      <span>Searching destinations...</span>
+                    </div>
+                  ) : placeSearchError ? (
+                    <div className="p-3.5 text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 border-b border-rose-100 dark:border-rose-900/60 flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[16px]">error</span>
+                      <span>{placeSearchError}</span>
+                    </div>
+                  ) : searchResults.length === 0 && hasSearched ? (
+                    <div className="p-4 text-center text-xs text-on-surface-variant">
+                      No destinations found for &quot;{newDestInput.trim()}&quot;. Press Enter to try another query.
+                    </div>
+                  ) : (
+                    searchResults.map((place, idx) => {
+                      const isHighlighted = idx === activeDropdownIndex;
+                      const isAdded = destinations.some(
+                        (d) => d.name.toLowerCase() === place.name.toLowerCase()
+                      );
+
+                      return (
+                        <div
+                          key={place.id}
+                          role="option"
+                          aria-selected={isHighlighted}
+                          onClick={() => handleSelectPlace(place)}
+                          className={`min-h-[44px] px-3.5 py-2.5 flex items-center justify-between gap-3 cursor-pointer transition-colors border-b last:border-b-0 border-surface-container-high/60 dark:border-outline-variant/40 ${
+                            isHighlighted
+                              ? 'bg-primary/10 dark:bg-primary/20'
+                              : 'hover:bg-surface-container-low dark:hover:bg-surface-container'
+                          } ${isAdded ? 'opacity-50 pointer-events-none' : ''}`}
+                        >
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                              <span className="material-symbols-outlined text-[16px]">
+                                {place.category === 'nature'
+                                  ? 'landscape'
+                                  : place.category === 'landmark'
+                                  ? 'account_balance'
+                                  : place.category === 'culture'
+                                  ? 'theater_comedy'
+                                  : 'location_on'}
+                              </span>
+                            </div>
+                            <div className="truncate">
+                              <span className="font-semibold text-xs text-on-surface block truncate">
+                                {place.name}
+                              </span>
+                              <span className="text-[11px] text-on-surface-variant block truncate">
+                                {place.country ? `${place.country} • ` : ''}
+                                {place.displayName}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="shrink-0 flex items-center gap-1.5">
+                            {place.categoryLabel && (
+                              <span className="font-badge text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-container-highest text-on-surface-variant">
+                                {place.categoryLabel}
+                              </span>
+                            )}
+                            {isAdded ? (
+                              <span className="text-[11px] text-on-surface-variant font-medium">Added</span>
+                            ) : (
+                              <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
+                                add_circle
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
             </div>
+
+            {/* Step 3: Popular in {Country} Recommendations Strip */}
+            {isLoadingRecommendations ? (
+              <div className="flex items-center gap-2 pt-1 text-xs text-on-surface-variant animate-pulse">
+                <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
+                <span>Finding recommended places in {recommendedCountry}...</span>
+              </div>
+            ) : recommendations.length > 0 && (
+              <div className="flex flex-col gap-1.5 pt-1">
+                <span className="font-caption text-caption text-on-surface-variant flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[14px] text-primary">explore</span>
+                  Popular in {recommendedCountry}:
+                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {recommendations
+                    .filter(
+                      (rec) =>
+                        !destinations.some(
+                          (d) => d.name.toLowerCase() === rec.name.toLowerCase()
+                        )
+                    )
+                    .slice(0, 8)
+                    .map((rec) => (
+                      <button
+                        key={rec.id}
+                        type="button"
+                        onClick={() => handleAddRecommendation(rec)}
+                        className="px-2.5 py-1 rounded-full bg-surface-container-high hover:bg-surface-container text-on-surface font-caption text-caption flex items-center gap-1 transition-colors cursor-pointer"
+                        title={`Add ${rec.name} to itinerary`}
+                      >
+                        <span className="material-symbols-outlined text-[13px] text-primary">add</span>
+                        <span>{rec.name}</span>
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Field 3: Date Range Picker & Duration */}
+          {/* Field 3: Dates */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-space-md">
             <div className="flex flex-col gap-space-xs">
               <label className="font-body-medium text-small text-on-surface font-semibold" htmlFor="start-date">
-                Start Date
+                Start date
               </label>
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">
                   calendar_today
                 </span>
                 <input
-                  className="w-full h-[44px] pl-10 pr-3 bg-surface-container-low text-on-surface rounded-lg font-body text-body shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-container"
+                  className="w-full h-[44px] pl-10 pr-3 bg-surface-container-low text-on-surface placeholder:text-on-surface-variant/60 rounded-lg font-body text-body shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-container [color-scheme:light] dark:[color-scheme:dark]"
                   id="start-date"
-                  type="text"
+                  type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => {
+                    const nextStart = e.target.value;
+                    setStartDate(nextStart);
+                    if (endDate && nextStart > endDate) {
+                      setDateError('End date cannot be before start date');
+                    } else {
+                      setDateError(null);
+                    }
+                  }}
                 />
               </div>
             </div>
             <div className="flex flex-col gap-space-xs">
               <div className="flex items-center justify-between">
                 <label className="font-body-medium text-small text-on-surface font-semibold" htmlFor="end-date">
-                  End Date
+                  End date
                 </label>
-                <span className="bg-surface-variant text-primary font-badge text-badge px-2 py-0.5 rounded-full">
-                  8 DAYS CALCULATED
-                </span>
+                {hasValidDates && calculatedDays !== null && (
+                  <span className="bg-surface-variant text-primary font-badge text-badge px-2 py-0.5 rounded-full font-bold">
+                    {calculatedDays} DAYS CALCULATED
+                  </span>
+                )}
               </div>
               <div className="relative">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">
                   event
                 </span>
                 <input
-                  className="w-full h-[44px] pl-10 pr-3 bg-surface-container-low text-on-surface rounded-lg font-body text-body shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-container"
+                  className={`w-full h-[44px] pl-10 pr-3 bg-surface-container-low text-on-surface placeholder:text-on-surface-variant/60 rounded-lg font-body text-body shadow-sm focus:outline-none focus:ring-2 [color-scheme:light] dark:[color-scheme:dark] ${
+                    dateError ? 'ring-2 ring-error' : 'focus:ring-primary-container'
+                  }`}
                   id="end-date"
-                  type="text"
+                  type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={(e) => {
+                    const nextEnd = e.target.value;
+                    setEndDate(nextEnd);
+                    if (startDate && nextEnd < startDate) {
+                      setDateError('End date cannot be before start date');
+                    } else {
+                      setDateError(null);
+                    }
+                  }}
                 />
               </div>
+              {dateError && (
+                <span className="text-[11px] text-error dark:text-rose-400 font-medium">{dateError}</span>
+              )}
             </div>
           </div>
 
-          {/* Seasonal Advisory Banner */}
-          <div className="p-space-sm bg-secondary-fixed/40 rounded-lg flex items-start gap-space-sm shadow-sm">
-            <span className="material-symbols-outlined text-secondary text-[20px] shrink-0 mt-0.5">
-              warning
-            </span>
-            <div className="flex flex-col min-w-0">
-              <span className="font-body-medium text-small text-on-secondary-fixed font-semibold">
-                Autumn Foliage Peak Season Advisory
-              </span>
-              <span className="font-caption text-caption text-on-surface-variant">
-                Selected dates overlap with Momiji peak season across Kansai. Hotel inventory decreases
-                rapidly; Shinkansen seat reserves are recommended 30 days prior.
-              </span>
-            </div>
-          </div>
-
-          {/* Field 4: Estimated Budget */}
+          {/* Field 4: Estimated Budget (₱) */}
           <div className="flex flex-col gap-space-xs">
-            <div className="flex items-center justify-between">
-              <label className="font-body-medium text-small text-on-surface font-semibold">
-                Estimated Total Budget
-              </label>
-              <span className="font-caption text-caption text-secondary flex items-center gap-1 font-body-medium">
-                <span className="material-symbols-outlined text-[14px]">trending_up</span> +15% over standard
-                plan
+            <label className="font-body-medium text-small text-on-surface font-semibold" htmlFor="estimated-budget">
+              Estimated Total Budget (₱)
+            </label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 font-bold text-base text-on-surface-variant">
+                ₱
               </span>
-            </div>
-            <div className="grid grid-cols-3 gap-space-sm">
-              <div className="col-span-1 relative">
-                <select
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                  className="w-full h-[44px] px-3 bg-surface-container-low text-on-surface rounded-lg font-body text-body appearance-none shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-container cursor-pointer"
-                >
-                  <option>USD ($)</option>
-                  <option>EUR (€)</option>
-                  <option>JPY (¥)</option>
-                  <option>GBP (£)</option>
-                </select>
-                <span className="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px] pointer-events-none">
-                  expand_more
-                </span>
-              </div>
-              <div className="col-span-2 relative">
-                <input
-                  className="w-full h-[44px] px-3 bg-surface-container-low text-on-surface rounded-lg font-body text-body shadow-sm focus:outline-none focus:ring-2 focus:ring-secondary transition-all"
-                  type="text"
-                  value={budget}
-                  onChange={(e) => setBudget(e.target.value)}
-                />
-                <span className="font-badge text-badge text-on-surface-variant absolute right-3 top-1/2 -translate-y-1/2">
-                  PER TRAVELER
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-1.5 text-secondary font-caption text-caption pt-0.5">
-              <span className="material-symbols-outlined text-[16px]">info</span>
-              <span>
-                Budget exceeds recommended single traveler baseline ($2,130.00) by 15% due to high season ryokan pricing.
-              </span>
+              <input
+                className="w-full h-[44px] pl-9 pr-3 bg-surface-container-low text-on-surface placeholder:text-on-surface-variant/60 rounded-lg font-body text-body shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-container"
+                id="estimated-budget"
+                type="text"
+                placeholder="50,000"
+                value={budget}
+                onChange={(e) => setBudget(e.target.value)}
+              />
             </div>
           </div>
 
-          {/* Field 5: Privacy & Permissions */}
+          {/* Field 5: Trip Collaboration & Privacy */}
           <div className="flex flex-col gap-space-xs">
             <label className="font-body-medium text-small text-on-surface font-semibold">
-              Privacy &amp; Collaborator Permissions
+              Route Access &amp; Privacy
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
-              <div
+            <div className="grid grid-cols-2 gap-space-sm">
+              <button
+                type="button"
                 onClick={() => setPrivacy('collaborative')}
-                className={`p-space-sm rounded-lg flex items-start gap-space-sm cursor-pointer shadow-sm transition-all ${
+                className={`p-3 rounded-xl border flex flex-col items-start gap-1 text-left transition-all cursor-pointer ${
                   privacy === 'collaborative'
-                    ? 'bg-surface-container ring-1 ring-primary'
-                    : 'bg-surface-container-low hover:bg-surface-container'
+                    ? 'border-primary bg-primary/5 text-primary'
+                    : 'border-surface-container-high bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
                 }`}
               >
-                <div className="w-4 h-4 rounded-full bg-primary-container flex items-center justify-center shrink-0 mt-0.5">
-                  {privacy === 'collaborative' && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-surface-container-lowest" />
-                  )}
+                <div className="flex items-center gap-1.5 font-bold text-xs">
+                  <span className="material-symbols-outlined text-[16px]">group</span>
+                  <span>Collaborative Atelier</span>
                 </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="font-body-medium text-small text-on-surface font-semibold">
-                    Elena &amp; Liam
-                  </span>
-                  <span className="font-caption text-caption text-on-surface-variant">
-                    Shared workspace. 2 editors can adjust daily timeline slots.
-                  </span>
-                </div>
-              </div>
-
-              <div
+                <span className="text-[11px] opacity-80">
+                  Shared with co-travelers &amp; curators
+                </span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setPrivacy('private')}
-                className={`p-space-sm rounded-lg flex items-start gap-space-sm cursor-pointer transition-all shadow-sm ${
+                className={`p-3 rounded-xl border flex flex-col items-start gap-1 text-left transition-all cursor-pointer ${
                   privacy === 'private'
-                    ? 'bg-surface-container ring-1 ring-primary'
-                    : 'bg-surface-container-low hover:bg-surface-container'
+                    ? 'border-primary bg-primary/5 text-primary'
+                    : 'border-surface-container-high bg-surface-container-low text-on-surface-variant hover:bg-surface-container'
                 }`}
               >
-                <div className="w-4 h-4 rounded-full bg-surface-container-highest flex items-center justify-center shrink-0 mt-0.5">
-                  {privacy === 'private' && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-surface-container-lowest" />
-                  )}
+                <div className="flex items-center gap-1.5 font-bold text-xs">
+                  <span className="material-symbols-outlined text-[16px]">lock</span>
+                  <span>Private Draft</span>
                 </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="font-body-medium text-small text-on-surface font-semibold">
-                    Private Draft Only
-                  </span>
-                  <span className="font-caption text-caption text-on-surface-variant">
-                    Restricted to your personal explorer dashboard.
-                  </span>
-                </div>
-              </div>
+                <span className="text-[11px] opacity-80">
+                  Visible only to your account
+                </span>
+              </button>
             </div>
           </div>
 
-          {/* Field 6: Trip Notes */}
+          {/* Field 6: Curator Notes & Logistical Context */}
           <div className="flex flex-col gap-space-xs">
-            <div className="flex items-center justify-between">
-              <label
-                className="font-body-medium text-small text-on-surface font-semibold"
-                htmlFor="trip-notes"
-              >
-                Logistics Notes &amp; Curatorial Focus
-              </label>
-              <span className="font-caption text-caption text-on-surface-variant">Markdown supported</span>
-            </div>
+            <label className="font-body-medium text-small text-on-surface font-semibold" htmlFor="curator-notes">
+              Curator Notes &amp; Expedition Logistics
+            </label>
             <textarea
-              className="w-full p-3 bg-surface-container-low text-on-surface rounded-lg font-body text-body shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-container resize-none"
-              id="trip-notes"
+              className="w-full p-3 bg-surface-container-low text-on-surface placeholder:text-on-surface-variant/60 rounded-lg font-body text-body shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-container resize-none"
+              id="curator-notes"
               rows={3}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
+              placeholder="Add key logistics, rail transit guidelines, or hotel confirmation reminders..."
             />
           </div>
 
-          {/* Field 7: Cover Image Selection */}
+          {/* Field 7: Cover photo (optional) */}
           <div className="flex flex-col gap-space-xs">
             <div className="flex items-center justify-between">
               <label className="font-body-medium text-small text-on-surface font-semibold">
-                Trip Cover Backdrop
+                Cover photo (optional)
               </label>
-              <button
-                className="font-caption text-caption text-primary hover:text-primary-container flex items-center gap-1 font-body-medium cursor-pointer"
-                type="button"
-                onClick={() => alert('Custom photo uploaded successfully!')}
-              >
-                <span className="material-symbols-outlined text-[14px]">cloud_upload</span> Upload custom photo
-              </button>
+              {selectedCover && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedCover('');
+                    setSelectedCoverAlt('');
+                    setSelectedCoverCredit('');
+                    setSelectedCoverCreditUrl('');
+                  }}
+                  className="text-xs text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[15px]">close</span>
+                  Remove cover
+                </button>
+              )}
             </div>
-            <div className="grid grid-cols-4 gap-space-sm">
-              {coverOptions.map((opt) => {
-                const isSelected = selectedCover === opt.url;
-                return (
-                  <div
-                    key={opt.id}
-                    onClick={() => setSelectedCover(opt.url)}
-                    className={`relative h-20 rounded-lg overflow-hidden shadow-sm cursor-pointer transition-all ${
-                      isSelected ? 'ring-2 ring-secondary shadow-md' : 'hover:opacity-90'
+
+            {/* Destination tabs if multiple destinations */}
+            {destinations.length > 1 && (
+              <div className="flex items-center gap-1.5 flex-wrap pt-0.5 pb-1">
+                <span className="text-[11px] text-on-surface-variant font-medium">Photos for:</span>
+                {destinations.map((d, idx) => (
+                  <button
+                    key={d.name}
+                    type="button"
+                    onClick={() => setActivePhotoDestIndex(idx)}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer ${
+                      activePhotoDestIndex === idx
+                        ? 'bg-primary text-white shadow-xs'
+                        : 'bg-surface-container-high text-on-surface hover:bg-surface-container'
                     }`}
                   >
-                    <img
-                      alt={opt.alt}
-                      src={opt.url}
-                      className="w-full h-full object-cover"
-                    />
-                    {isSelected && (
-                      <div className="absolute inset-0 bg-primary-container/20 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-on-primary text-[20px] bg-secondary rounded-full p-0.5">
-                          check
-                        </span>
-                      </div>
-                    )}
-                    <span className="absolute bottom-1 left-1.5 font-badge text-badge text-on-primary bg-on-surface/70 px-1 rounded backdrop-blur-sm">
-                      {opt.label}
+                    {d.name}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Photo Choice Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-space-sm">
+              {/* "No cover" choice tile */}
+              <div
+                onClick={() => {
+                  setSelectedCover('');
+                  setSelectedCoverAlt('');
+                  setSelectedCoverCredit('');
+                  setSelectedCoverCreditUrl('');
+                }}
+                className={`group relative h-22 rounded-lg cursor-pointer border-2 transition-all flex flex-col items-center justify-center gap-1 p-2 ${
+                  !selectedCover
+                    ? 'border-secondary ring-2 ring-secondary/30 bg-surface-container-high'
+                    : 'border-surface-container-high/60 bg-surface-container-low hover:border-outline-variant hover:bg-surface-container'
+                }`}
+              >
+                <span className="material-symbols-outlined text-[24px] text-on-surface-variant">
+                  image_not_supported
+                </span>
+                <span className="text-[11px] font-bold text-on-surface tracking-wide">
+                  No cover
+                </span>
+                {!selectedCover && (
+                  <div className="absolute top-1.5 right-1.5">
+                    <span className="material-symbols-outlined text-secondary text-[16px]">
+                      check_circle
                     </span>
                   </div>
-                );
-              })}
+                )}
+              </div>
+
+              {/* Photo Suggestions or Loading / Empty States */}
+              {destinations.length === 0 ? (
+                <div className="col-span-1 sm:col-span-3 p-3 rounded-lg border border-dashed border-surface-container-high bg-surface-container-low text-center text-xs text-on-surface-variant flex items-center justify-center gap-2">
+                  <span className="material-symbols-outlined text-[18px] opacity-60">add_location_alt</span>
+                  <span>Add a destination to see photo suggestions</span>
+                </div>
+              ) : isLoadingPhotos ? (
+                <>
+                  {[1, 2, 3].map((n) => (
+                    <div
+                      key={n}
+                      className="h-22 rounded-lg bg-surface-container-high animate-pulse border border-surface-container-high"
+                    />
+                  ))}
+                </>
+              ) : photoError ? (
+                <div className="col-span-1 sm:col-span-3 p-3 rounded-lg bg-surface-container-low text-xs text-on-surface-variant flex items-center gap-2 border border-surface-container-high">
+                  <span className="material-symbols-outlined text-[18px] opacity-60">cloud_off</span>
+                  <span>Photo suggestions are temporarily unavailable. You can still save without a cover.</span>
+                </div>
+              ) : photoSuggestions.length === 0 ? (
+                <div className="col-span-1 sm:col-span-3 p-3 rounded-lg bg-surface-container-low text-xs text-on-surface-variant flex items-center justify-center gap-2 border border-surface-container-high">
+                  <span className="material-symbols-outlined text-[18px] opacity-60">hide_image</span>
+                  <span>No photos found for this destination.</span>
+                </div>
+              ) : (
+                photoSuggestions.map((photo) => {
+                  const isSelected = selectedCover === photo.coverUrl;
+                  return (
+                    <div
+                      key={photo.id}
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedCover('');
+                          setSelectedCoverAlt('');
+                          setSelectedCoverCredit('');
+                          setSelectedCoverCreditUrl('');
+                        } else {
+                          setSelectedCover(photo.coverUrl);
+                          setSelectedCoverAlt(photo.alt);
+                          setSelectedCoverCredit(
+                            photo.creator ? `Photo: ${photo.creator} · ${photo.licenseName} · Wikimedia Commons` : ''
+                          );
+                          setSelectedCoverCreditUrl(photo.filePageUrl);
+                        }
+                      }}
+                      className={`group relative h-22 rounded-lg overflow-hidden cursor-pointer border-2 transition-all ${
+                        isSelected
+                          ? 'border-secondary ring-2 ring-secondary/30 scale-[1.02]'
+                          : 'border-transparent hover:border-outline-variant opacity-85 hover:opacity-100'
+                      }`}
+                    >
+                      <img
+                        src={photo.thumbUrl || photo.coverUrl}
+                        alt={photo.alt}
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                      />
+                      {isSelected && (
+                        <div className="absolute inset-0 bg-primary-container/20 flex items-center justify-center">
+                          <span className="material-symbols-outlined text-on-primary text-[20px] bg-secondary rounded-full p-0.5">
+                            check
+                          </span>
+                        </div>
+                      )}
+                      <div className="absolute bottom-1 left-1.5 right-1.5 px-1 py-0.5 bg-black/60 rounded text-[9px] font-medium text-white truncate backdrop-blur-xs">
+                        {photo.alt}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
+
+            {/* Active Cover Attribution Caption */}
+            {selectedCover && selectedCoverCredit && (
+              <div className="text-[11px] text-on-surface-variant flex items-center gap-1.5 pt-1">
+                <span className="material-symbols-outlined text-[14px] text-primary">info</span>
+                <span>
+                  {selectedCoverCreditUrl ? (
+                    <a
+                      href={selectedCoverCreditUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline text-primary"
+                    >
+                      {selectedCoverCredit}
+                    </a>
+                  ) : (
+                    selectedCoverCredit
+                  )}
+                </span>
+              </div>
+            )}
           </div>
         </form>
 
         {/* Modal Footer */}
         <div className="px-gutter-md py-space-md bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-space-sm border-t border-surface-container-high/60 shrink-0 sticky bottom-0 pb-safe">
           <div className="flex items-center gap-space-xs text-on-surface-variant font-caption text-caption">
-            <span className="material-symbols-outlined text-[16px] text-primary-container">sync</span>
-            <span>Autosaved draft moments ago</span>
+            {editingTrip && (
+              <button
+                type="button"
+                onClick={handleDeleteTrip}
+                disabled={isDeleting || isSaving}
+                className="h-[36px] px-3 rounded-lg text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 font-button text-caption flex items-center gap-1.5 transition-colors cursor-pointer border border-rose-200 dark:border-rose-900/60"
+              >
+                <span className="material-symbols-outlined text-[16px]">delete</span>
+                <span>{isDeleting ? 'Deleting...' : 'Delete Trip'}</span>
+              </button>
+            )}
           </div>
           <div className="flex items-center gap-space-sm w-full sm:w-auto justify-end">
             <button
@@ -513,7 +1211,7 @@ export const EditTripModal: React.FC = () => {
             <button
               onClick={handleSave}
               disabled={isSaving}
-              className="h-[44px] px-6 rounded-lg bg-secondary hover:bg-secondary-container text-on-secondary font-button text-button flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.99] cursor-pointer"
+              className="h-[44px] px-6 rounded-lg bg-secondary hover:bg-secondary-container text-on-secondary font-button text-button flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.99] cursor-pointer disabled:opacity-60"
               type="button"
             >
               {isSaving ? (
@@ -524,7 +1222,7 @@ export const EditTripModal: React.FC = () => {
               ) : (
                 <>
                   <span className="material-symbols-outlined text-[20px]">check</span>
-                  <span>Save Trip &amp; Continue to Itinerary</span>
+                  <span>Save Trip &amp; Continue</span>
                 </>
               )}
             </button>

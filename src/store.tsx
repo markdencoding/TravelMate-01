@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+'use client';
+
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   Trip,
   ScheduledActivity,
@@ -11,16 +13,7 @@ import {
   CurrentUser,
   TabType,
 } from './types';
-import {
-  INITIAL_TRIPS,
-  INITIAL_SCHEDULED_ACTIVITIES,
-  INITIAL_EXPENSES,
-  INITIAL_REMINDERS,
-  INITIAL_PLACES,
-  INITIAL_NOTIFICATIONS,
-  INITIAL_ADMIN_USERS,
-  INITIAL_PREFERENCES,
-} from './mockData';
+import { createClient } from '@/lib/supabase/client';
 
 interface TravelStoreContextType {
   // Navigation
@@ -34,7 +27,8 @@ interface TravelStoreContextType {
 
   // Trips
   trips: Trip[];
-  addTrip: (trip: Omit<Trip, 'id'>) => void;
+  setTrips: (trips: Trip[]) => void;
+  addTrip: (trip: Omit<Trip, 'id'> | Trip) => void;
   updateTrip: (id: string, updates: Partial<Trip>) => void;
   deleteTrip: (id: string) => void;
   toggleBookmarkTrip: (id: string) => void;
@@ -101,29 +95,89 @@ interface TravelStoreContextType {
   openEditTripModal: (trip?: Trip) => void;
 
   // Reset & Export
+  clearUserData: () => void;
   resetToSampleData: () => void;
   exportDataAsJson: () => void;
 }
 
-const STORAGE_KEY = 'travelmate_store_v1';
+const THEME_STORAGE_KEY = 'travelmate_theme';
+const SIDEBAR_STORAGE_KEY = 'travelmate_sidebar_collapsed';
 
 const DEFAULT_CURRENT_USER: CurrentUser = {
-  name: 'Alex Morgan',
-  email: 'alex.morgan@curator.travel',
+  name: 'Traveler',
+  email: '',
   avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-  role: 'Lead Atelier Curator',
+  role: 'Traveler',
+};
+
+const DEFAULT_PREFERENCES: UserPreferences = {
+  theme: 'system',
+  currency: 'PHP',
+  measurementUnits: 'metric',
+  dateFormat: 'YYYY-MM-DD',
+  timeFormat: '12',
+  notificationsEnabled: true,
+};
+
+const EMPTY_TRIP: Trip = {
+  id: '',
+  title: 'No Trip Selected',
+  destinationRegion: '',
+  country: '',
+  destinations: [],
+  startDate: '',
+  endDate: '',
+  dateRange: '',
+  status: 'planned',
+  daysCount: 0,
+  budget: 0,
+  estimatedBudget: 0,
+  budgetCap: 0,
+  activitiesCount: 0,
+  accommodationsCount: 0,
+  currency: 'PHP',
+  coverImage: '',
+  coverImageAlt: '',
+  coverImageCredit: '',
+  coverImageCreditUrl: '',
+  seasonTag: 'Trip',
+  description: '',
+  routeSummary: '',
+  isBookmarked: false,
 };
 
 const TravelStoreContext = createContext<TravelStoreContextType | null>(null);
 
 export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-  const [activeTripId, setActiveTripId] = useState<string>('kyoto-tokyo');
+  const [activeTripId, setActiveTripId] = useState<string>('');
 
-  // Theme preference: 'system' (default with auto-sync), 'light', or 'dark'
+  // Clean up legacy localStorage keys on startup
+  useEffect(() => {
+    try {
+      const allowedKeys = new Set([
+        THEME_STORAGE_KEY,
+        SIDEBAR_STORAGE_KEY,
+        'travelmate_last_activity',
+        'travelmate_last_active_time',
+      ]);
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('travelmate_') || key.startsWith('sb-zaloxunzttzhyvojhxnx')) && !allowedKeys.has(key)) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach((key) => localStorage.removeItem(key));
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  // Theme preference: 'system' (default), 'light', or 'dark'
   const [themePreference, setThemePreferenceState] = useState<'system' | 'light' | 'dark'>(() => {
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_theme_preference`);
+      const saved = localStorage.getItem(THEME_STORAGE_KEY);
       if (saved === 'system' || saved === 'light' || saved === 'dark') {
         return saved;
       }
@@ -133,31 +187,32 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   });
 
-  // Compute initial dark mode based on preference or system
-  const [darkMode, setDarkMode] = useState<boolean>(() => {
+  const [darkMode, setDarkMode] = useState<boolean>(false);
+
+  // Synchronize initial dark mode state safely after client mount to prevent SSR hydration mismatch
+  useEffect(() => {
     try {
-      const savedPref = localStorage.getItem(`${STORAGE_KEY}_theme_preference`);
-      if (savedPref === 'dark') return true;
-      if (savedPref === 'light') return false;
-      if (typeof window !== 'undefined' && window.matchMedia) {
-        return window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const saved = localStorage.getItem(THEME_STORAGE_KEY);
+      if (saved === 'dark') {
+        setDarkMode(true);
+      } else if (saved === 'light') {
+        setDarkMode(false);
+      } else if (typeof window !== 'undefined' && window.matchMedia) {
+        setDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
       }
-      return false;
-    } catch {
-      return false;
-    }
-  });
+    } catch {}
+  }, []);
 
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_sidebar_collapsed`);
+      const saved = localStorage.getItem(SIDEBAR_STORAGE_KEY);
       return saved === 'true';
     } catch {
       return false;
     }
   });
 
-  // Listen to system dark mode preference change when preference is 'system'
+  // Listen to system dark mode preference change
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -183,17 +238,18 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   }, [darkMode]);
 
-  // Save theme preference and update dark mode accordingly
   const setThemePreference = (pref: 'system' | 'light' | 'dark') => {
     setThemePreferenceState(pref);
     try {
-      localStorage.setItem(`${STORAGE_KEY}_theme_preference`, pref);
+      localStorage.setItem(THEME_STORAGE_KEY, pref);
     } catch (e) {
       console.warn('Theme preference storage failed', e);
     }
 
     if (pref === 'system') {
-      const isSysDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const isSysDark =
+        typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-color-scheme: dark)').matches;
       setDarkMode(isSysDark);
     } else if (pref === 'dark') {
       setDarkMode(true);
@@ -204,7 +260,7 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   useEffect(() => {
     try {
-      localStorage.setItem(`${STORAGE_KEY}_sidebar_collapsed`, String(isSidebarCollapsed));
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(isSidebarCollapsed));
     } catch (e) {
       console.warn('Sidebar storage sync failed', e);
     }
@@ -217,209 +273,113 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setThemePreference(nextDark ? 'dark' : 'light');
   };
 
-  // Load from local storage or use defaults
-  const [trips, setTrips] = useState<Trip[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_trips`);
-      if (saved) {
-        const parsed: Trip[] = JSON.parse(saved);
-        return parsed.map((t) => ({
-          ...t,
-          budget: t.budget ?? t.estimatedBudget,
-          destinations: t.destinations ?? [t.destinationRegion],
-          description: t.description ?? t.routeSummary ?? t.notes ?? '',
-        }));
-      }
-      return INITIAL_TRIPS.map((t) => ({
-        ...t,
-        budget: t.budget ?? t.estimatedBudget,
-        destinations: t.destinations ?? [t.destinationRegion],
-        description: t.description ?? t.routeSummary ?? t.notes ?? '',
-      }));
-    } catch {
-      return INITIAL_TRIPS;
-    }
-  });
-
-  const [activities, setActivities] = useState<ScheduledActivity[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_activities`);
-      if (saved) {
-        const parsed: ScheduledActivity[] = JSON.parse(saved);
-        return parsed.map((a) => ({
-          ...a,
-          startTime: a.startTime ?? a.time,
-          endTime: a.endTime ?? '12:00 PM',
-          notes: a.notes ?? a.description ?? '',
-          cost: a.cost ?? 0,
-        }));
-      }
-      return INITIAL_SCHEDULED_ACTIVITIES.map((a) => ({
-        ...a,
-        startTime: a.startTime ?? a.time,
-        endTime: a.endTime ?? '12:00 PM',
-        notes: a.notes ?? a.description ?? '',
-        cost: a.cost ?? 0,
-      }));
-    } catch {
-      return INITIAL_SCHEDULED_ACTIVITIES;
-    }
-  });
-
-  const [expenses, setExpenses] = useState<ExpenseItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_expenses`);
-      if (saved) {
-        const parsed: ExpenseItem[] = JSON.parse(saved);
-        return parsed.map((e) => ({
-          ...e,
-          amount: e.amount ?? e.costJpy ?? e.costUsd ?? 0,
-        }));
-      }
-      return INITIAL_EXPENSES.map((e) => ({
-        ...e,
-        amount: e.amount ?? e.costJpy ?? e.costUsd ?? 0,
-      }));
-    } catch {
-      return INITIAL_EXPENSES;
-    }
-  });
-
-  const [reminders, setReminders] = useState<ReminderItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_reminders`);
-      return saved ? JSON.parse(saved) : INITIAL_REMINDERS;
-    } catch {
-      return INITIAL_REMINDERS;
-    }
-  });
-
-  const [places, setPlaces] = useState<PlacePOI[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_places`);
-      return saved ? JSON.parse(saved) : INITIAL_PLACES;
-    } catch {
-      return INITIAL_PLACES;
-    }
-  });
-
-  const [notifications, setNotifications] = useState<NotificationAlert[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_notifs`);
-      return saved ? JSON.parse(saved) : INITIAL_NOTIFICATIONS;
-    } catch {
-      return INITIAL_NOTIFICATIONS;
-    }
-  });
-
-  const [adminUsers, setAdminUsers] = useState<AdminUserRecord[]>(() => {
-    try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_users`);
-      if (saved) {
-        const parsed: AdminUserRecord[] = JSON.parse(saved);
-        return parsed.map((u) => ({
-          ...u,
-          avatar: u.avatar ?? u.avatarUrl ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-        }));
-      }
-      return INITIAL_ADMIN_USERS.map((u) => ({
-        ...u,
-        avatar: u.avatar ?? u.avatarUrl ?? 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
-      }));
-    } catch {
-      return INITIAL_ADMIN_USERS;
-    }
-  });
-
+  // Domain state starts clean (empty) for real Supabase usage
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [activities, setActivities] = useState<ScheduledActivity[]>([]);
+  const [expenses, setExpenses] = useState<ExpenseItem[]>([]);
+  const [reminders, setReminders] = useState<ReminderItem[]>([]);
+  const [places, setPlaces] = useState<PlacePOI[]>([]);
+  const [notifications, setNotifications] = useState<NotificationAlert[]>([]);
+  const [adminUsers, setAdminUsers] = useState<AdminUserRecord[]>([]);
   const [currentUser, setCurrentUser] = useState<CurrentUser>(DEFAULT_CURRENT_USER);
+  const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
 
-  const [preferences, setPreferences] = useState<UserPreferences>(() => {
-    try {
-      const saved = localStorage.getItem(`${STORAGE_KEY}_prefs`);
-      return saved ? JSON.parse(saved) : INITIAL_PREFERENCES;
-    } catch {
-      return INITIAL_PREFERENCES;
-    }
-  });
+  // Sync current user from real Supabase session & profiles on startup
+  useEffect(() => {
+    let isMounted = true;
+    const loadProfile = async () => {
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (user && isMounted) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name, avatar_url, role')
+            .eq('id', user.id)
+            .single();
+
+          if (isMounted) {
+            setCurrentUser({
+              name:
+                profile?.display_name ||
+                (user.user_metadata?.full_name as string) ||
+                (user.user_metadata?.name as string) ||
+                user.email?.split('@')[0] ||
+                'Traveler',
+              email: user.email || '',
+              avatar:
+                profile?.avatar_url ||
+                (user.user_metadata?.avatar_url as string) ||
+                DEFAULT_CURRENT_USER.avatar,
+              role: profile?.role === 'admin' ? 'Lead Curator' : 'Traveler',
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load user profile in store:', err);
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const clearUserData = useCallback(() => {
+    setTrips([]);
+    setActivities([]);
+    setExpenses([]);
+    setReminders([]);
+    setPlaces([]);
+    setNotifications([]);
+    setActiveTripId('');
+    setCurrentUser(DEFAULT_CURRENT_USER);
+    setPreferences(DEFAULT_PREFERENCES);
+  }, []);
+
+  // Listen to auth changes: clear cache/store when signed out or when active user changes
+  useEffect(() => {
+    let currentAuthUserId: string | null = null;
+    const supabase = createClient();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      const newUserId = session?.user?.id ?? null;
+      if (event === 'SIGNED_OUT' || !session) {
+        clearUserData();
+        currentAuthUserId = null;
+      } else if (newUserId && currentAuthUserId && newUserId !== currentAuthUserId) {
+        clearUserData();
+        currentAuthUserId = newUserId;
+      } else if (newUserId) {
+        currentAuthUserId = newUserId;
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [clearUserData]);
 
   // Modal State
   const [isEditTripModalOpen, setIsEditTripModalOpen] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
 
-  // Sync to local storage
-  useEffect(() => {
-    try {
-      localStorage.setItem(`${STORAGE_KEY}_trips`, JSON.stringify(trips));
-    } catch (e) {
-      console.warn('Storage sync failed', e);
-    }
-  }, [trips]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(`${STORAGE_KEY}_activities`, JSON.stringify(activities));
-    } catch (e) {
-      console.warn('Storage sync failed', e);
-    }
-  }, [activities]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(`${STORAGE_KEY}_expenses`, JSON.stringify(expenses));
-    } catch (e) {
-      console.warn('Storage sync failed', e);
-    }
-  }, [expenses]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(`${STORAGE_KEY}_reminders`, JSON.stringify(reminders));
-    } catch (e) {
-      console.warn('Storage sync failed', e);
-    }
-  }, [reminders]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(`${STORAGE_KEY}_places`, JSON.stringify(places));
-    } catch (e) {
-      console.warn('Storage sync failed', e);
-    }
-  }, [places]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(`${STORAGE_KEY}_notifs`, JSON.stringify(notifications));
-    } catch (e) {
-      console.warn('Storage sync failed', e);
-    }
-  }, [notifications]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(`${STORAGE_KEY}_users`, JSON.stringify(adminUsers));
-    } catch (e) {
-      console.warn('Storage sync failed', e);
-    }
-  }, [adminUsers]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(`${STORAGE_KEY}_prefs`, JSON.stringify(preferences));
-    } catch (e) {
-      console.warn('Storage sync failed', e);
-    }
-  }, [preferences]);
-
   // Derived Active Trip guaranteed non-null
   const activeTrip: Trip =
     trips.find((t) => t.id === activeTripId) ||
     trips[0] ||
-    INITIAL_TRIPS[0];
+    EMPTY_TRIP;
 
   // Actions
-  const addTrip = (tripData: Omit<Trip, 'id'>) => {
-    const id = `trip-${Date.now()}`;
+  const addTrip = (tripData: Omit<Trip, 'id'> | Trip) => {
+    const id = 'id' in tripData && tripData.id ? tripData.id : `trip-${Date.now()}`;
     const newTrip: Trip = {
       ...tripData,
       id,
@@ -432,9 +392,7 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const updateTrip = (id: string, updates: Partial<Trip>) => {
-    setTrips((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
-    );
+    setTrips((prev) => prev.map((t) => (t.id === id ? { ...t, ...updates } : t)));
   };
 
   const deleteTrip = (id: string) => {
@@ -443,6 +401,8 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
       const remaining = trips.filter((t) => t.id !== id);
       if (remaining.length > 0) {
         setActiveTripId(remaining[0].id);
+      } else {
+        setActiveTripId('');
       }
     }
   };
@@ -457,11 +417,6 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const newAct: ScheduledActivity = {
       ...actData,
       id: `act-${Date.now()}`,
-      time: actData.time || actData.startTime || '09:00 AM',
-      startTime: actData.startTime || actData.time || '09:00 AM',
-      endTime: actData.endTime || '10:30 AM',
-      cost: actData.cost ?? 0,
-      notes: actData.notes || actData.description || '',
     };
     setActivities((prev) => [...prev, newAct]);
   };
@@ -474,7 +429,6 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const newExp: ExpenseItem = {
       ...expData,
       id: `exp-${Date.now()}`,
-      amount: expData.amount ?? expData.costJpy ?? expData.costUsd ?? 0,
     };
     setExpenses((prev) => [newExp, ...prev]);
   };
@@ -499,34 +453,22 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
     const place = places.find((p) => p.id === placeId);
     if (!place) return;
 
-    addActivity({
+    const newActivity: ScheduledActivity = {
+      id: `act-${Date.now()}`,
       tripId,
       dayNumber,
-      time: place.timing.split(' - ')[0] || '10:00 AM',
-      startTime: place.timing.split(' - ')[0] || '10:00 AM',
-      endTime: place.timing.split(' - ')[1] || '12:00 PM',
+      time: '02:00 PM',
+      startTime: '02:00 PM',
+      endTime: '04:00 PM',
       title: place.name,
-      location: place.ward,
-      category: place.category === 'food' ? 'food' : 'activities',
+      location: place.ward || place.name,
+      category: 'activities',
       duration: '2h',
       cost: 0,
-      description: place.description,
-      notes: place.description,
-    });
-
-    setNotifications((prev) => [
-      {
-        id: `notif-${Date.now()}`,
-        title: 'Place Added to Itinerary',
-        message: `${place.name} was scheduled for Day ${dayNumber}.`,
-        timeAgo: 'Just now',
-        type: 'waypoint',
-        unread: true,
-        group: 'today',
-        actionTarget: 'calendar',
-      },
-      ...prev,
-    ]);
+      description: place.description || '',
+      notes: place.description || '',
+    };
+    setActivities((prev) => [...prev, newActivity]);
   };
 
   const markNotificationRead = (id: string) => {
@@ -549,13 +491,7 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const toggleAdminUserStatus = (id: string) => {
     setAdminUsers((prev) =>
-      prev.map((u) => {
-        if (u.id === id) {
-          const nextStatus = u.status === 'ACTIVE' || u.status === 'active' ? 'DISABLED' : 'ACTIVE';
-          return { ...u, status: nextStatus };
-        }
-        return u;
-      })
+      prev.map((u) => (u.id === id ? { ...u, status: u.status === 'ACTIVE' || u.status === 'active' ? 'DISABLED' : 'ACTIVE' } : u))
     );
   };
 
@@ -574,29 +510,12 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const openEditTripModal = (trip?: Trip) => {
-    setEditingTrip(trip || activeTrip || null);
+    setEditingTrip(trip || (activeTrip.id ? activeTrip : null));
     setIsEditTripModalOpen(true);
   };
 
-  const resetToSampleData = () => {
-    localStorage.removeItem(`${STORAGE_KEY}_trips`);
-    localStorage.removeItem(`${STORAGE_KEY}_activities`);
-    localStorage.removeItem(`${STORAGE_KEY}_expenses`);
-    localStorage.removeItem(`${STORAGE_KEY}_reminders`);
-    localStorage.removeItem(`${STORAGE_KEY}_places`);
-    localStorage.removeItem(`${STORAGE_KEY}_notifs`);
-    localStorage.removeItem(`${STORAGE_KEY}_users`);
-    localStorage.removeItem(`${STORAGE_KEY}_prefs`);
-    setTrips(INITIAL_TRIPS);
-    setActivities(INITIAL_SCHEDULED_ACTIVITIES);
-    setExpenses(INITIAL_EXPENSES);
-    setReminders(INITIAL_REMINDERS);
-    setPlaces(INITIAL_PLACES);
-    setNotifications(INITIAL_NOTIFICATIONS);
-    setAdminUsers(INITIAL_ADMIN_USERS);
-    setPreferences(INITIAL_PREFERENCES);
-    setActiveTripId('kyoto-tokyo');
-  };
+  // Demo reset removed: domain state is derived exclusively from Supabase
+  const resetToSampleData = () => {};
 
   const exportDataAsJson = () => {
     const dataToExport = {
@@ -630,6 +549,7 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setActiveTripId,
         activeTrip,
         trips,
+        setTrips,
         addTrip,
         updateTrip,
         deleteTrip,
@@ -673,6 +593,7 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         setIsEditTripModalOpen,
         editingTrip,
         openEditTripModal,
+        clearUserData,
         resetToSampleData,
         exportDataAsJson,
       }}

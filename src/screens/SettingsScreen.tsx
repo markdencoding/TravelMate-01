@@ -1,42 +1,100 @@
-import React, { useState } from 'react';
+'use client';
+
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTravelStore } from '../store';
+import { UserPreferences } from '../types';
+import { getProfileAction, updateProfileAction } from '@/app/actions/profile';
 
 export const SettingsScreen: React.FC = () => {
   const {
     currentUser,
+    setCurrentUser,
     userPreferences,
     updateUserPreferences,
-    resetToSampleData,
     exportDataAsJson,
     darkMode,
     setDarkMode,
     themePreference,
     setThemePreference,
+    trips,
+    activities,
+    expenses,
   } = useTravelStore();
 
   const [activeSubTab, setActiveSubTab] = useState<'general' | 'preferences' | 'data' | 'security'>(
     'general'
   );
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [saveToast, setSaveToast] = useState(false);
 
   // Form local states for profile
-  const [userName, setUserName] = useState(currentUser.name);
-  const [userEmail, setUserEmail] = useState(currentUser.email);
-  const [bio, setBio] = useState('Passionate about Kyoto architecture, tea ceremonies, and alpine trekking.');
+  const [userName, setUserName] = useState(currentUser?.name || '');
+  const [userEmail, setUserEmail] = useState(currentUser?.email || '');
+  const [bio, setBio] = useState('');
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const dataSizeKb = useMemo(() => {
+    try {
+      const raw = JSON.stringify({ trips, activities, expenses, userPreferences });
+      return Math.max(1, Math.round(new Blob([raw]).size / 1024));
+    } catch {
+      return 1;
+    }
+  }, [trips, activities, expenses, userPreferences]);
+  const pctUsed = Math.min(100, Math.max(0.1, Number(((dataSizeKb / 5120) * 100).toFixed(1))));
+
+  useEffect(() => {
+    async function loadProfile() {
+      try {
+        const res = await getProfileAction();
+        if (res.data) {
+          if (res.data.user) {
+            setCurrentUser(res.data.user);
+            setUserName(res.data.user.name);
+            setUserEmail(res.data.user.email);
+          }
+          if (res.data.preferences) {
+            updateUserPreferences(res.data.preferences);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not load profile from Supabase:', err);
+      }
+    }
+    loadProfile();
+  }, [setCurrentUser, updateUserPreferences]);
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    try {
+      const res = await updateProfileAction({
+        displayName: userName,
+        bio: bio,
+      });
+      if (res.success && res.data) {
+        setCurrentUser(res.data.user);
+      }
+    } catch (err) {
+      console.warn('Profile save fallback to local:', err);
+    }
     setSaveToast(true);
     setTimeout(() => setSaveToast(false), 2500);
   };
 
-  const handleResetData = () => {
-    resetToSampleData();
-    setShowResetConfirm(false);
-    setSaveToast(true);
-    setTimeout(() => setSaveToast(false), 2500);
+  const handleUpdatePref = async (updates: Partial<UserPreferences>) => {
+    updateUserPreferences(updates);
+    try {
+      await updateProfileAction({
+        currency: updates.currency,
+        measurementUnits: updates.measurementUnits,
+        dateFormat: updates.dateFormat as 'YYYY-MM-DD' | 'MMM DD, YYYY' | 'DD/MM/YYYY' | undefined,
+        timeFormat: updates.timeFormat,
+        notificationsEnabled: updates.notificationsEnabled,
+      });
+    } catch (err) {
+      console.warn('Failed to sync preferences to Supabase:', err);
+    }
   };
+
+
 
   return (
     <div className="space-y-6 animate-fade-in max-w-5xl">
@@ -142,16 +200,18 @@ export const SettingsScreen: React.FC = () => {
             </div>
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-left space-y-2 text-xs text-slate-600 dark:text-slate-400">
               <div className="flex justify-between">
-                <span>Account Created:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">January 2024</span>
+                <span>Account Status:</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Active</span>
               </div>
               <div className="flex justify-between">
                 <span>Total Expeditions:</span>
-                <span className="font-semibold text-slate-800 dark:text-slate-200">5 trips</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200">
+                  {trips.length} {trips.length === 1 ? 'trip' : 'trips'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span>Storage Protocol:</span>
-                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Client-Side First</span>
+                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Cloud &amp; Offline Sync</span>
               </div>
             </div>
           </div>
@@ -163,38 +223,38 @@ export const SettingsScreen: React.FC = () => {
             <form onSubmit={handleSaveProfile} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Display Name
                   </label>
                   <input
                     type="text"
                     value={userName}
                     onChange={(e) => setUserName(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Email Address
                   </label>
                   <input
                     type="email"
                     value={userEmail}
                     onChange={(e) => setUserEmail(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Traveler Bio / Focus
                 </label>
                 <textarea
                   rows={3}
                   value={bio}
                   onChange={(e) => setBio(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-slate-100 focus:bg-white dark:focus:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
 
@@ -224,66 +284,68 @@ export const SettingsScreen: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            {/* Preferred Currency */}
+            {/* Standard System Currency */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-700">
-                Primary Currency
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                System Standard Currency
               </label>
-              <select
-                value={userPreferences.currency}
-                onChange={(e) => updateUserPreferences({ currency: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="JPY">JPY (¥) - Japanese Yen</option>
-                <option value="USD">USD ($) - US Dollar</option>
-                <option value="EUR">EUR (€) - Euro</option>
-                <option value="GBP">GBP (£) - British Pound</option>
-                <option value="CAD">CAD ($) - Canadian Dollar</option>
-              </select>
-              <p className="text-[11px] text-slate-400">Used for budgeting calculations and default expense entries.</p>
+              <div className="flex items-center gap-2.5 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60">
+                <span className="text-xl">🇵🇭</span>
+                <div>
+                  <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                    Philippine Peso (PHP, ₱)
+                  </div>
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Standard primary currency for all trips &amp; expenses
+                  </div>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Use the informational Currency Converter to view approximate rates in other currencies.
+              </p>
             </div>
 
             {/* Units System */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-700">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Measurement System
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => updateUserPreferences({ measurementUnits: 'metric' })}
+                  onClick={() => handleUpdatePref({ measurementUnits: 'metric' })}
                   className={`p-2 rounded-xl border text-xs font-semibold text-center transition-all ${
                     userPreferences.measurementUnits === 'metric'
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                      ? 'border-primary bg-primary/5 text-primary dark:bg-primary/20 dark:text-teal-300'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                   }`}
                 >
                   Metric (km, °C)
                 </button>
                 <button
                   type="button"
-                  onClick={() => updateUserPreferences({ measurementUnits: 'imperial' })}
+                  onClick={() => handleUpdatePref({ measurementUnits: 'imperial' })}
                   className={`p-2 rounded-xl border text-xs font-semibold text-center transition-all ${
                     userPreferences.measurementUnits === 'imperial'
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                      ? 'border-primary bg-primary/5 text-primary dark:bg-primary/20 dark:text-teal-300'
+                      : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
                   }`}
                 >
                   Imperial (mi, °F)
                 </button>
               </div>
-              <p className="text-[11px] text-slate-400">Controls walking distances and weather displays.</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">Controls walking distances and weather displays.</p>
             </div>
 
             {/* Date Format */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-slate-700">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
                 Date Representation
               </label>
               <select
                 value={userPreferences.dateFormat}
-                onChange={(e) => updateUserPreferences({ dateFormat: e.target.value })}
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary"
+                onChange={(e) => handleUpdatePref({ dateFormat: e.target.value })}
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 <option value="YYYY-MM-DD">2026-10-14 (ISO 8601 Standard)</option>
                 <option value="MMM DD, YYYY">Oct 14, 2026 (Medium Human)</option>
@@ -359,13 +421,13 @@ export const SettingsScreen: React.FC = () => {
           </div>
 
           {/* Toggle Switches */}
-          <div className="pt-4 border-t border-slate-100 space-y-3">
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 space-y-3">
             <div className="flex items-center justify-between py-2">
               <div>
-                <div className="text-xs font-bold text-slate-800">
+                <div className="text-xs font-bold text-slate-800 dark:text-slate-100">
                   Notification Sound & Alert Badges
                 </div>
-                <div className="text-[11px] text-slate-500">
+                <div className="text-[11px] text-slate-500 dark:text-slate-400">
                   Play gentle chime on transit departure milestones and schedule conflicts.
                 </div>
               </div>
@@ -373,18 +435,18 @@ export const SettingsScreen: React.FC = () => {
                 type="checkbox"
                 checked={userPreferences.notificationsEnabled}
                 onChange={(e) =>
-                  updateUserPreferences({ notificationsEnabled: e.target.checked })
+                  handleUpdatePref({ notificationsEnabled: e.target.checked })
                 }
-                className="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
+                className="w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-700 focus:ring-primary"
               />
             </div>
 
             <div className="flex items-center justify-between py-2">
               <div>
-                <div className="text-xs font-bold text-slate-800">
+                <div className="text-xs font-bold text-slate-800 dark:text-slate-100">
                   Preload High-Resolution Satellite Tiles
                 </div>
-                <div className="text-[11px] text-slate-500">
+                <div className="text-[11px] text-slate-500 dark:text-slate-400">
                   Cache offline vector map coordinates for low-connectivity expeditions.
                 </div>
               </div>
@@ -394,7 +456,7 @@ export const SettingsScreen: React.FC = () => {
                 onChange={(e) =>
                   updateUserPreferences({ offlineSync: e.target.checked })
                 }
-                className="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
+                className="w-4 h-4 text-primary rounded border-slate-300 dark:border-slate-700 focus:ring-primary"
               />
             </div>
           </div>
@@ -423,19 +485,21 @@ export const SettingsScreen: React.FC = () => {
             <div className="bg-slate-50 dark:bg-slate-800/80 p-4 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2">
               <div className="flex justify-between text-xs font-semibold text-slate-700 dark:text-slate-300">
                 <span>Client Storage Allocated</span>
-                <span className="font-mono">148 KB / 5.0 MB</span>
+                <span className="font-mono">{dataSizeKb} KB / 5.0 MB</span>
               </div>
               <div className="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
-                <div className="bg-primary h-full rounded-full" style={{ width: '3.2%' }} />
+                <div className="bg-primary h-full rounded-full" style={{ width: `${pctUsed}%` }} />
               </div>
               <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400">
-                <span>5 Expeditions, 24 Activities, 12 Expenses</span>
-                <span>96.8% Remaining</span>
+                <span>
+                  {trips.length} Expedition{trips.length === 1 ? '' : 's'}, {activities.length} Activit{activities.length === 1 ? 'y' : 'ies'}, {expenses.length} Expense{expenses.length === 1 ? '' : 's'}
+                </span>
+                <span>{(100 - pctUsed).toFixed(1)}% Remaining</span>
               </div>
             </div>
 
             {/* Actions Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+            <div className="grid grid-cols-1 gap-4 pt-2">
               <div className="p-4 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl space-y-2">
                 <div className="flex items-center gap-2 text-slate-800 dark:text-slate-200 font-bold text-xs">
                   <span className="material-symbols-outlined text-primary text-[18px]">
@@ -451,24 +515,6 @@ export const SettingsScreen: React.FC = () => {
                   className="w-full py-2 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors shadow-2xs"
                 >
                   Export travelmate-backup.json
-                </button>
-              </div>
-
-              <div className="p-4 bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/60 rounded-xl space-y-2">
-                <div className="flex items-center gap-2 text-rose-800 dark:text-rose-300 font-bold text-xs">
-                  <span className="material-symbols-outlined text-rose-600 dark:text-rose-400 text-[18px]">
-                    restart_alt
-                  </span>
-                  One-Click Sample Data Reset
-                </div>
-                <p className="text-[11px] text-rose-600 dark:text-rose-400">
-                  Reset the app to pristine state with the Kyoto, Amalfi, and Patagonia sample journeys.
-                </p>
-                <button
-                  onClick={() => setShowResetConfirm(true)}
-                  className="w-full py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold transition-colors shadow-2xs"
-                >
-                  Reset to Curated Defaults
                 </button>
               </div>
             </div>
@@ -510,36 +556,7 @@ export const SettingsScreen: React.FC = () => {
         </div>
       )}
 
-      {/* Reset Confirmation Modal */}
-      {showResetConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4">
-            <div className="w-12 h-12 rounded-full bg-rose-100 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto">
-              <span className="material-symbols-outlined text-[28px]">warning</span>
-            </div>
-            <div className="text-center">
-              <h4 className="text-base font-bold text-slate-900 dark:text-slate-100">Reset Local Dataset?</h4>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                This will overwrite any newly drafted expenses or itinerary edits with the baseline Kyoto expedition template.
-              </p>
-            </div>
-            <div className="flex gap-2 pt-2">
-              <button
-                onClick={() => setShowResetConfirm(false)}
-                className="flex-1 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-300 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleResetData}
-                className="flex-1 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-xs font-semibold text-white transition-colors"
-              >
-                Reset Data
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };

@@ -1,760 +1,130 @@
 import { DestinationWeatherResponse, DailyWeatherForecast } from '../types';
+import type { TrimmedWeatherResponse } from '../lib/validators/weather';
 
 /**
- * Mock Weather API Service
- * Simulates an atmospheric meteorology provider for expedition planners.
+ * Fetch real weather from TravelMate /api/weather route handler (Open-Meteo)
  */
-
-const KNOWN_DESTINATIONS: Record<string, DestinationWeatherResponse> = {
-  kyoto: {
-    destination: 'Kyoto',
-    country: 'Japan',
-    currentTempC: 17,
-    feelsLikeC: 16,
-    currentCondition: 'Pleasant Autumn Sunshine',
-    currentIcon: 'wb_sunny',
-    humidity: 52,
-    windKmh: 11,
-    uvIndex: 4,
-    airQuality: 'Excellent (AQI 18)',
-    sunrise: '06:02 AM',
-    sunset: '05:22 PM',
-    lastUpdated: '12 mins ago',
-    expeditionInsight:
-      'Peak Japanese maple foliage (Momiji) approaching. Mornings are crisp at mountain shrines like Kurama and Kiyomizu; breathable wool or down layer advised.',
-    forecast: [
-      {
-        date: '2026-10-14',
-        dayName: 'Wednesday',
-        dayLabel: 'Today',
-        condition: 'Clear & Crisp',
-        conditionDescription: 'Warm sun with gentle mountain breezes in Higashiyama.',
-        icon: 'wb_sunny',
-        highC: 19,
-        lowC: 10,
-        precipitationPercent: 5,
-        humidity: 48,
-        windSpeedKmh: 10,
-        uvIndex: 5,
-        clothingTip: 'Light chore jacket or knit sweater, comfortable walking trainers.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 13, icon: 'wb_sunny', condition: 'Sunny' },
-          { time: '12:00', tempC: 18, icon: 'wb_sunny', condition: 'Sunny' },
-          { time: '15:00', tempC: 19, icon: 'wb_sunny', condition: 'Sunny' },
-          { time: '18:00', tempC: 14, icon: 'bedtime', condition: 'Clear' },
-          { time: '21:00', tempC: 11, icon: 'bedtime', condition: 'Chilly' },
-        ],
-      },
-      {
-        date: '2026-10-15',
-        dayName: 'Thursday',
-        dayLabel: 'Thu',
-        condition: 'Filtered Sun & Bamboo Mist',
-        conditionDescription: 'High cirrus clouds over Arashiyama with soft golden light.',
-        icon: 'partly_cloudy_day',
-        highC: 18,
-        lowC: 11,
-        precipitationPercent: 12,
-        humidity: 55,
-        windSpeedKmh: 12,
-        uvIndex: 4,
-        clothingTip: 'Breathable long-sleeve tee with an overshirt.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 14, icon: 'partly_cloudy_day', condition: 'Partly Cloudy' },
-          { time: '12:00', tempC: 18, icon: 'wb_sunny', condition: 'Sunny' },
-          { time: '15:00', tempC: 17, icon: 'partly_cloudy_day', condition: 'Cloudy' },
-          { time: '18:00', tempC: 13, icon: 'bedtime', condition: 'Cool' },
-          { time: '21:00', tempC: 11, icon: 'bedtime', condition: 'Clear' },
-        ],
-      },
-      {
-        date: '2026-10-16',
-        dayName: 'Friday',
-        dayLabel: 'Fri',
-        condition: 'Light Temple Mist',
-        conditionDescription: 'Transient atmospheric drizzle over Gion stone alleys.',
-        icon: 'rainy',
-        highC: 16,
-        lowC: 12,
-        precipitationPercent: 42,
-        humidity: 68,
-        windSpeedKmh: 15,
-        uvIndex: 2,
-        clothingTip: 'Pack lightweight compact umbrella and water-resistant shoes.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 13, icon: 'rainy', condition: 'Misty Rain' },
-          { time: '12:00', tempC: 16, icon: 'rainy', condition: 'Scattered Showers' },
-          { time: '15:00', tempC: 15, icon: 'cloud', condition: 'Overcast' },
-          { time: '18:00', tempC: 13, icon: 'partly_cloudy_night', condition: 'Drying Out' },
-          { time: '21:00', tempC: 12, icon: 'bedtime', condition: 'Cool Mist' },
-        ],
-      },
-      {
-        date: '2026-10-17',
-        dayName: 'Saturday',
-        dayLabel: 'Sat',
-        condition: 'Vibrant Azure Sky',
-        conditionDescription: 'Pristine post-rain visibility across Mount Hiei and Daimonji.',
-        icon: 'wb_sunny',
-        highC: 20,
-        lowC: 9,
-        precipitationPercent: 8,
-        humidity: 46,
-        windSpeedKmh: 9,
-        uvIndex: 5,
-        clothingTip: 'Sunglasses, sun hat for Nanzen-ji aqueduct and philosophy path.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 14, icon: 'wb_sunny', condition: 'Sunny' },
-          { time: '12:00', tempC: 19, icon: 'wb_sunny', condition: 'Crisp Sun' },
-          { time: '15:00', tempC: 20, icon: 'wb_sunny', condition: 'Warm Sun' },
-          { time: '18:00', tempC: 14, icon: 'bedtime', condition: 'Clear Sky' },
-          { time: '21:00', tempC: 10, icon: 'bedtime', condition: 'Crisp Night' },
-        ],
-      },
-      {
-        date: '2026-10-18',
-        dayName: 'Sunday',
-        dayLabel: 'Sun',
-        condition: 'Temperate Autumn Breeze',
-        conditionDescription: 'Mild afternoon along Kamogawa riverbanks, perfect for bicycles.',
-        icon: 'air',
-        highC: 19,
-        lowC: 11,
-        precipitationPercent: 15,
-        humidity: 50,
-        windSpeedKmh: 14,
-        uvIndex: 4,
-        clothingTip: 'Windbreaker layer for riverside cafe terraces.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 15, icon: 'wb_sunny', condition: 'Morning Sun' },
-          { time: '12:00', tempC: 18, icon: 'partly_cloudy_day', condition: 'Breezy' },
-          { time: '15:00', tempC: 19, icon: 'partly_cloudy_day', condition: 'Breezy' },
-          { time: '18:00', tempC: 15, icon: 'bedtime', condition: 'Dusk' },
-          { time: '21:00', tempC: 12, icon: 'bedtime', condition: 'Clear' },
-        ],
-      },
-    ],
-  },
-  amalfi: {
-    destination: 'Amalfi Coast',
-    country: 'Italy',
-    currentTempC: 23,
-    feelsLikeC: 24,
-    currentCondition: 'Warm Tyrrhenian Sun',
-    currentIcon: 'wb_sunny',
-    humidity: 58,
-    windKmh: 16,
-    uvIndex: 6,
-    airQuality: 'Sea Breeze Pure (AQI 12)',
-    sunrise: '07:11 AM',
-    sunset: '06:28 PM',
-    lastUpdated: '8 mins ago',
-    expeditionInsight:
-      'Warm cliffside walking conditions on Path of the Gods (Sentiero degli Dei). UV index moderate to high at midday; carry 1.5L water and polarized shades.',
-    forecast: [
-      {
-        date: '2026-10-14',
-        dayName: 'Wednesday',
-        dayLabel: 'Today',
-        condition: 'Coastal Radiance',
-        conditionDescription: 'Sparkling sea horizon with azure skies from Positano to Ravello.',
-        icon: 'wb_sunny',
-        highC: 24,
-        lowC: 17,
-        precipitationPercent: 5,
-        humidity: 56,
-        windSpeedKmh: 15,
-        uvIndex: 6,
-        clothingTip: 'Linen shirts, polarized sunglasses, light cliff-hiking footwear.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 20, icon: 'wb_sunny', condition: 'Warm Sun' },
-          { time: '12:00', tempC: 24, icon: 'wb_sunny', condition: 'Full Sun' },
-          { time: '15:00', tempC: 23, icon: 'wb_sunny', condition: 'Coastal Sun' },
-          { time: '18:00', tempC: 20, icon: 'wb_twilight', condition: 'Sunset' },
-          { time: '21:00', tempC: 18, icon: 'bedtime', condition: 'Mild' },
-        ],
-      },
-      {
-        date: '2026-10-15',
-        dayName: 'Thursday',
-        dayLabel: 'Thu',
-        condition: 'Azure & Mild Sea Breeze',
-        conditionDescription: 'Gentle marine wind along high lemon terraces.',
-        icon: 'air',
-        highC: 23,
-        lowC: 16,
-        precipitationPercent: 10,
-        humidity: 60,
-        windSpeedKmh: 18,
-        uvIndex: 6,
-        clothingTip: 'Sun protection essential for ferry transfers.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 19, icon: 'wb_sunny', condition: 'Sunny' },
-          { time: '12:00', tempC: 23, icon: 'wb_sunny', condition: 'Bright' },
-          { time: '15:00', tempC: 22, icon: 'wb_sunny', condition: 'Breezy' },
-          { time: '18:00', tempC: 19, icon: 'bedtime', condition: 'Clear' },
-          { time: '21:00', tempC: 17, icon: 'bedtime', condition: 'Mild' },
-        ],
-      },
-      {
-        date: '2026-10-16',
-        dayName: 'Friday',
-        dayLabel: 'Fri',
-        condition: 'Scattered Marine Clouds',
-        conditionDescription: 'Dramatic cloud shadows over Gulf of Salerno.',
-        icon: 'partly_cloudy_day',
-        highC: 22,
-        lowC: 15,
-        precipitationPercent: 20,
-        humidity: 64,
-        windSpeedKmh: 14,
-        uvIndex: 5,
-        clothingTip: 'Light cardigan for coastal ferry top decks.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 18, icon: 'partly_cloudy_day', condition: 'Cloudy' },
-          { time: '12:00', tempC: 22, icon: 'wb_sunny', condition: 'Sun Breaks' },
-          { time: '15:00', tempC: 21, icon: 'partly_cloudy_day', condition: 'Clouds' },
-          { time: '18:00', tempC: 18, icon: 'bedtime', condition: 'Gentle' },
-          { time: '21:00', tempC: 16, icon: 'bedtime', condition: 'Cool' },
-        ],
-      },
-      {
-        date: '2026-10-17',
-        dayName: 'Saturday',
-        dayLabel: 'Sat',
-        condition: 'Warm Mediterranean Afternoon',
-        conditionDescription: 'Sublime evening temperatures in Ravello garden villas.',
-        icon: 'wb_sunny',
-        highC: 25,
-        lowC: 16,
-        precipitationPercent: 5,
-        humidity: 52,
-        windSpeedKmh: 12,
-        uvIndex: 6,
-        clothingTip: 'Al fresco dining wear, light evening scarf.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 20, icon: 'wb_sunny', condition: 'Warm Sun' },
-          { time: '12:00', tempC: 25, icon: 'wb_sunny', condition: 'Sunny' },
-          { time: '15:00', tempC: 24, icon: 'wb_sunny', condition: 'Sunny' },
-          { time: '18:00', tempC: 20, icon: 'bedtime', condition: 'Pleasant' },
-          { time: '21:00', tempC: 18, icon: 'bedtime', condition: 'Mild' },
-        ],
-      },
-      {
-        date: '2026-10-18',
-        dayName: 'Sunday',
-        dayLabel: 'Sun',
-        condition: 'Golden Autumn Light',
-        conditionDescription: 'Smooth seas for boat excursions to Capri or Emerald Grotto.',
-        icon: 'wb_sunny',
-        highC: 23,
-        lowC: 15,
-        precipitationPercent: 12,
-        humidity: 58,
-        windSpeedKmh: 14,
-        uvIndex: 5,
-        clothingTip: 'Boat shoes, wind layer for open water.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 19, icon: 'wb_sunny', condition: 'Clear' },
-          { time: '12:00', tempC: 23, icon: 'wb_sunny', condition: 'Sunny' },
-          { time: '15:00', tempC: 22, icon: 'partly_cloudy_day', condition: 'Breeze' },
-          { time: '18:00', tempC: 18, icon: 'bedtime', condition: 'Mild' },
-          { time: '21:00', tempC: 16, icon: 'bedtime', condition: 'Calm' },
-        ],
-      },
-    ],
-  },
-  patagonia: {
-    destination: 'Patagonia',
-    country: 'Chile & Argentina',
-    currentTempC: 10,
-    feelsLikeC: 6,
-    currentCondition: 'Brisk Glacial Breeze & Sun',
-    currentIcon: 'air',
-    humidity: 48,
-    windKmh: 34,
-    uvIndex: 4,
-    airQuality: 'Pristine Subpolar (AQI 4)',
-    sunrise: '06:45 AM',
-    sunset: '08:15 PM',
-    lastUpdated: '15 mins ago',
-    expeditionInsight:
-      'Torres del Paine winds are picking up to 35 km/h over Grey Glacier. GORE-TEX hardshell, neck gaiter, and trekking poles mandatory for pass traverses.',
-    forecast: [
-      {
-        date: '2026-10-14',
-        dayName: 'Wednesday',
-        dayLabel: 'Today',
-        condition: 'Variable Alpine & Sun',
-        conditionDescription: 'Dramatic cloud shifts over granite spires.',
-        icon: 'partly_cloudy_day',
-        highC: 12,
-        lowC: 3,
-        precipitationPercent: 18,
-        humidity: 50,
-        windSpeedKmh: 32,
-        uvIndex: 4,
-        clothingTip: 'Thermal merino base, fleece mid-layer, windproof outer shell.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 6, icon: 'air', condition: 'Windy' },
-          { time: '12:00', tempC: 11, icon: 'wb_sunny', condition: 'Sun Breaks' },
-          { time: '15:00', tempC: 12, icon: 'partly_cloudy_day', condition: 'Alpine Wind' },
-          { time: '18:00', tempC: 8, icon: 'cloud', condition: 'Cool Gusts' },
-          { time: '21:00', tempC: 4, icon: 'bedtime', condition: 'Chilly' },
-        ],
-      },
-      {
-        date: '2026-10-15',
-        dayName: 'Thursday',
-        dayLabel: 'Thu',
-        condition: 'High Ridge Winds',
-        conditionDescription: 'Strong westerly gusts over Lake Pehoe.',
-        icon: 'air',
-        highC: 9,
-        lowC: 2,
-        precipitationPercent: 30,
-        humidity: 58,
-        windSpeedKmh: 42,
-        uvIndex: 3,
-        clothingTip: 'Sturdy windshell, eye protection against glacial grit.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 5, icon: 'air', condition: 'High Wind' },
-          { time: '12:00', tempC: 9, icon: 'cloud', condition: 'Overcast' },
-          { time: '15:00', tempC: 8, icon: 'air', condition: 'Strong Gusts' },
-          { time: '18:00', tempC: 6, icon: 'cloud', condition: 'Cool' },
-          { time: '21:00', tempC: 3, icon: 'bedtime', condition: 'Cold' },
-        ],
-      },
-      {
-        date: '2026-10-16',
-        dayName: 'Friday',
-        dayLabel: 'Fri',
-        condition: 'Clear Granite Vista',
-        conditionDescription: 'Calmer morning window ideal for Mirador Las Torres sunrise climb.',
-        icon: 'wb_sunny',
-        highC: 13,
-        lowC: 1,
-        precipitationPercent: 10,
-        humidity: 45,
-        windSpeedKmh: 18,
-        uvIndex: 5,
-        clothingTip: 'Headlamp, insulated gloves for 04:30 AM alpine departure.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 7, icon: 'wb_sunny', condition: 'Crisp Sun' },
-          { time: '12:00', tempC: 12, icon: 'wb_sunny', condition: 'Clear Sky' },
-          { time: '15:00', tempC: 13, icon: 'wb_sunny', condition: 'Sun' },
-          { time: '18:00', tempC: 9, icon: 'bedtime', condition: 'Clear' },
-          { time: '21:00', tempC: 3, icon: 'bedtime', condition: 'Starfield' },
-        ],
-      },
-      {
-        date: '2026-10-17',
-        dayName: 'Saturday',
-        dayLabel: 'Sat',
-        condition: 'Misty Glacial Rain',
-        conditionDescription: 'Passing sleet front over French Valley.',
-        icon: 'rainy',
-        highC: 8,
-        lowC: 2,
-        precipitationPercent: 65,
-        humidity: 76,
-        windSpeedKmh: 30,
-        uvIndex: 2,
-        clothingTip: 'Waterproof pants, pack cover, dry-bags for electronics.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 4, icon: 'rainy', condition: 'Cold Rain' },
-          { time: '12:00', tempC: 7, icon: 'rainy', condition: 'Sleet / Rain' },
-          { time: '15:00', tempC: 8, icon: 'cloud', condition: 'Overcast' },
-          { time: '18:00', tempC: 5, icon: 'rainy', condition: 'Showers' },
-          { time: '21:00', tempC: 3, icon: 'bedtime', condition: 'Chilly' },
-        ],
-      },
-      {
-        date: '2026-10-18',
-        dayName: 'Sunday',
-        dayLabel: 'Sun',
-        condition: 'Crisp Steppe Sun',
-        conditionDescription: 'Sweeping visibility across guanaco herds on pampa plains.',
-        icon: 'partly_cloudy_day',
-        highC: 11,
-        lowC: 4,
-        precipitationPercent: 15,
-        humidity: 52,
-        windSpeedKmh: 22,
-        uvIndex: 4,
-        clothingTip: 'Midweight softshell jacket, trail boots.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 6, icon: 'partly_cloudy_day', condition: 'Cool' },
-          { time: '12:00', tempC: 10, icon: 'wb_sunny', condition: 'Sunny' },
-          { time: '15:00', tempC: 11, icon: 'partly_cloudy_day', condition: 'Breeze' },
-          { time: '18:00', tempC: 8, icon: 'bedtime', condition: 'Clear' },
-          { time: '21:00', tempC: 4, icon: 'bedtime', condition: 'Crisp' },
-        ],
-      },
-    ],
-  },
-  scotland: {
-    destination: 'Scottish Highlands',
-    country: 'United Kingdom',
-    currentTempC: 12,
-    feelsLikeC: 10,
-    currentCondition: 'Highland Mist & Soft Light',
-    currentIcon: 'foggy',
-    humidity: 78,
-    windKmh: 20,
-    uvIndex: 2,
-    airQuality: 'Glen Fresh (AQI 9)',
-    sunrise: '07:38 AM',
-    sunset: '06:14 PM',
-    lastUpdated: '10 mins ago',
-    expeditionInsight:
-      'Atmospheric mist over Glen Coe and the Quiraing. Boggy terrain on ridge walks; waterproof leather hiking boots and gaiters recommended.',
-    forecast: [
-      {
-        date: '2026-10-14',
-        dayName: 'Wednesday',
-        dayLabel: 'Today',
-        condition: 'Highland Drizzle & Mist',
-        conditionDescription: 'Moody low-hanging clouds across dramatic glens.',
-        icon: 'foggy',
-        highC: 13,
-        lowC: 7,
-        precipitationPercent: 55,
-        humidity: 82,
-        windSpeedKmh: 22,
-        uvIndex: 2,
-        clothingTip: 'Barbour wax jacket or Gore-Tex shell, sturdy waterproof boots.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 9, icon: 'foggy', condition: 'Glen Mist' },
-          { time: '12:00', tempC: 12, icon: 'rainy', condition: 'Light Drizzle' },
-          { time: '15:00', tempC: 13, icon: 'cloud', condition: 'Low Clouds' },
-          { time: '18:00', tempC: 10, icon: 'cloud', condition: 'Dusk' },
-          { time: '21:00', tempC: 8, icon: 'bedtime', condition: 'Chilly Mist' },
-        ],
-      },
-      {
-        date: '2026-10-15',
-        dayName: 'Thursday',
-        dayLabel: 'Thu',
-        condition: 'Sun Breaks & Loch Shimmer',
-        conditionDescription: 'Transient sunshine lighting up golden bracken.',
-        icon: 'partly_cloudy_day',
-        highC: 14,
-        lowC: 6,
-        precipitationPercent: 25,
-        humidity: 70,
-        windSpeedKmh: 18,
-        uvIndex: 3,
-        clothingTip: 'Fleece layer, camera lens rain sleeve.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 8, icon: 'partly_cloudy_day', condition: 'Misty' },
-          { time: '12:00', tempC: 13, icon: 'wb_sunny', condition: 'Sun Breaks' },
-          { time: '15:00', tempC: 14, icon: 'partly_cloudy_day', condition: 'Fair' },
-          { time: '18:00', tempC: 11, icon: 'bedtime', condition: 'Cool' },
-          { time: '21:00', tempC: 7, icon: 'bedtime', condition: 'Calm Loch' },
-        ],
-      },
-      {
-        date: '2026-10-16',
-        dayName: 'Friday',
-        dayLabel: 'Fri',
-        condition: 'Brisk Atlantic Wind',
-        conditionDescription: 'Gusty squalls on Isle of Skye coastal cliffs.',
-        icon: 'air',
-        highC: 12,
-        lowC: 8,
-        precipitationPercent: 45,
-        humidity: 76,
-        windSpeedKmh: 32,
-        uvIndex: 2,
-        clothingTip: 'Windproof beanie and snug shell.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 9, icon: 'air', condition: 'Gusty' },
-          { time: '12:00', tempC: 12, icon: 'rainy', condition: 'Passing Shower' },
-          { time: '15:00', tempC: 12, icon: 'air', condition: 'Coastal Wind' },
-          { time: '18:00', tempC: 10, icon: 'cloud', condition: 'Overcast' },
-          { time: '21:00', tempC: 8, icon: 'bedtime', condition: 'Brisk' },
-        ],
-      },
-      {
-        date: '2026-10-17',
-        dayName: 'Saturday',
-        dayLabel: 'Sat',
-        condition: 'Calm Crisp Glen Morning',
-        conditionDescription: 'Mirror-still lochs with crystal reflections.',
-        icon: 'wb_sunny',
-        highC: 15,
-        lowC: 5,
-        precipitationPercent: 10,
-        humidity: 65,
-        windSpeedKmh: 12,
-        uvIndex: 3,
-        clothingTip: 'Perfect castle garden and single-malt tasting weather.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 7, icon: 'wb_sunny', condition: 'Sunny Frost' },
-          { time: '12:00', tempC: 14, icon: 'wb_sunny', condition: 'Pleasant Sun' },
-          { time: '15:00', tempC: 15, icon: 'wb_sunny', condition: 'Mild' },
-          { time: '18:00', tempC: 11, icon: 'bedtime', condition: 'Clear' },
-          { time: '21:00', tempC: 6, icon: 'bedtime', condition: 'Cold Night' },
-        ],
-      },
-      {
-        date: '2026-10-18',
-        dayName: 'Sunday',
-        dayLabel: 'Sun',
-        condition: 'Autumn Overcast',
-        conditionDescription: 'Soft atmospheric grey sky ideal for photography.',
-        icon: 'cloud',
-        highC: 13,
-        lowC: 7,
-        precipitationPercent: 30,
-        humidity: 74,
-        windSpeedKmh: 16,
-        uvIndex: 2,
-        clothingTip: 'Warm wool sweater and insulated vest.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 9, icon: 'cloud', condition: 'Grey Sky' },
-          { time: '12:00', tempC: 13, icon: 'cloud', condition: 'Overcast' },
-          { time: '15:00', tempC: 13, icon: 'cloud', condition: 'Overcast' },
-          { time: '18:00', tempC: 10, icon: 'bedtime', condition: 'Cool' },
-          { time: '21:00', tempC: 8, icon: 'bedtime', condition: 'Quiet' },
-        ],
-      },
-    ],
-  },
-  reykjavik: {
-    destination: 'Reykjavik',
-    country: 'Iceland',
-    currentTempC: 3,
-    feelsLikeC: -1,
-    currentCondition: 'Crisp Arctic Air & Clear Sky',
-    currentIcon: 'ac_unit',
-    humidity: 62,
-    windKmh: 24,
-    uvIndex: 1,
-    airQuality: 'Glacial Absolute Pure (AQI 2)',
-    sunrise: '08:12 AM',
-    sunset: '06:05 PM',
-    lastUpdated: '5 mins ago',
-    expeditionInsight:
-      'High geomagnetic index (Kp 4.2) forecast tonight. Favorable clear skies along Thingvellir and Snaefellsnes for Aurora Borealis spotting. Geothermal hot spring dip strongly recommended.',
-    forecast: [
-      {
-        date: '2026-10-14',
-        dayName: 'Wednesday',
-        dayLabel: 'Today',
-        condition: 'Aurora Alert & Crisp Cold',
-        conditionDescription: 'Clear northern skies with icy brilliance.',
-        icon: 'bedtime',
-        highC: 4,
-        lowC: -1,
-        precipitationPercent: 5,
-        humidity: 60,
-        windSpeedKmh: 20,
-        uvIndex: 1,
-        clothingTip: 'Heavy down parka, thermal underwear, wool hat, touchscreen gloves.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 0, icon: 'wb_sunny', condition: 'Icy Sun' },
-          { time: '12:00', tempC: 3, icon: 'wb_sunny', condition: 'Pale Sun' },
-          { time: '15:00', tempC: 4, icon: 'wb_sunny', condition: 'Cold Light' },
-          { time: '18:00', tempC: 1, icon: 'bedtime', condition: 'Freezing' },
-          { time: '21:00', tempC: -1, icon: 'bedtime', condition: 'Aurora Window' },
-        ],
-      },
-      {
-        date: '2026-10-15',
-        dayName: 'Thursday',
-        dayLabel: 'Thu',
-        condition: 'Brisk Ocean Wind & Flurries',
-        conditionDescription: 'Passing snow pellets along black sand beaches of Vik.',
-        icon: 'weather_snowy',
-        highC: 2,
-        lowC: -2,
-        precipitationPercent: 40,
-        humidity: 70,
-        windSpeedKmh: 28,
-        uvIndex: 1,
-        clothingTip: 'Windproof crampon-ready boots, balaclava.',
-        hourlyPreview: [
-          { time: '09:00', tempC: -1, icon: 'weather_snowy', condition: 'Flurries' },
-          { time: '12:00', tempC: 2, icon: 'cloud', condition: 'Chilly' },
-          { time: '15:00', tempC: 2, icon: 'weather_snowy', condition: 'Light Snow' },
-          { time: '18:00', tempC: 0, icon: 'bedtime', condition: 'Icy Wind' },
-          { time: '21:00', tempC: -2, icon: 'bedtime', condition: 'Sub-Zero' },
-        ],
-      },
-      {
-        date: '2026-10-16',
-        dayName: 'Friday',
-        dayLabel: 'Fri',
-        condition: 'Geothermal Steam & Sun',
-        conditionDescription: 'Sublime contrast between frosty air and hot lagoon waters.',
-        icon: 'partly_cloudy_day',
-        highC: 5,
-        lowC: 0,
-        precipitationPercent: 15,
-        humidity: 64,
-        windSpeedKmh: 16,
-        uvIndex: 1,
-        clothingTip: 'Swimwear under insulated snowsuit, dry robe.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 1, icon: 'wb_sunny', condition: 'Crisp' },
-          { time: '12:00', tempC: 4, icon: 'wb_sunny', condition: 'Sunny' },
-          { time: '15:00', tempC: 5, icon: 'partly_cloudy_day', condition: 'Breezy' },
-          { time: '18:00', tempC: 2, icon: 'bedtime', condition: 'Dusk' },
-          { time: '21:00', tempC: 0, icon: 'bedtime', condition: 'Clear' },
-        ],
-      },
-      {
-        date: '2026-10-17',
-        dayName: 'Saturday',
-        dayLabel: 'Sat',
-        condition: 'Deep Arctic Blue Sky',
-        conditionDescription: 'Pristine glacier walk conditions on Solheimajokull.',
-        icon: 'wb_sunny',
-        highC: 3,
-        lowC: -3,
-        precipitationPercent: 8,
-        humidity: 55,
-        windSpeedKmh: 14,
-        uvIndex: 1,
-        clothingTip: 'Glacier goggles, hard crampons, thermos of hot brew.',
-        hourlyPreview: [
-          { time: '09:00', tempC: -1, icon: 'wb_sunny', condition: 'Sun on Ice' },
-          { time: '12:00', tempC: 3, icon: 'wb_sunny', condition: 'Glacier Sun' },
-          { time: '15:00', tempC: 3, icon: 'wb_sunny', condition: 'Clear' },
-          { time: '18:00', tempC: 0, icon: 'bedtime', condition: 'Cold' },
-          { time: '21:00', tempC: -3, icon: 'bedtime', condition: 'Severe Chill' },
-        ],
-      },
-      {
-        date: '2026-10-18',
-        dayName: 'Sunday',
-        dayLabel: 'Sun',
-        condition: 'Coastal Overcast & Sea Spray',
-        conditionDescription: 'Dramatic Atlantic breakers crashing on Reykjanes peninsula.',
-        icon: 'cloud',
-        highC: 4,
-        lowC: 1,
-        precipitationPercent: 30,
-        humidity: 72,
-        windSpeedKmh: 30,
-        uvIndex: 1,
-        clothingTip: 'Full storm gear for lighthouse viewpoints.',
-        hourlyPreview: [
-          { time: '09:00', tempC: 2, icon: 'cloud', condition: 'Overcast' },
-          { time: '12:00', tempC: 4, icon: 'cloud', condition: 'Sea Wind' },
-          { time: '15:00', tempC: 4, icon: 'air', condition: 'Gusty' },
-          { time: '18:00', tempC: 2, icon: 'bedtime', condition: 'Damp' },
-          { time: '21:00', tempC: 1, icon: 'bedtime', condition: 'Cold Spray' },
-        ],
-      },
-    ],
-  },
-};
-
-/**
- * Procedural forecast generator for unlisted destination names
- */
-function generateDynamicForecast(dest: string, country?: string): DestinationWeatherResponse {
-  // Deterministic seed based on name
-  let hash = 0;
-  for (let i = 0; i < dest.length; i++) {
-    hash = (hash << 5) - hash + dest.charCodeAt(i);
-    hash |= 0;
+export async function fetchRealWeather(
+  latitude: number,
+  longitude: number
+): Promise<TrimmedWeatherResponse> {
+  const res = await fetch(`/api/weather?lat=${latitude}&lon=${longitude}`);
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Weather request failed with status ${res.status}`);
   }
-  const positiveHash = Math.abs(hash);
-  const baseTemp = 14 + (positiveHash % 12); // 14 to 25 C
-  const conditions = [
-    { cond: 'Clear & Sunny', icon: 'wb_sunny', desc: 'Pleasant sunshine with gentle thermals.' },
-    { cond: 'Partly Cloudy', icon: 'partly_cloudy_day', desc: 'Soft clouds with ample bright intervals.' },
-    { cond: 'Mild Breeze', icon: 'air', desc: 'Breezy conditions, ideal for walking explorations.' },
-    { cond: 'Passing Showers', icon: 'rainy', desc: 'Brief passing sprinkles followed by clearing.' },
-    { cond: 'Overcast & Cool', icon: 'cloud', desc: 'Diffused light, comfortable sightseeing.' },
-  ];
-
-  const days: DailyWeatherForecast[] = [];
-  const dayNames = ['Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-  const dayLabels = ['Today', 'Thu', 'Fri', 'Sat', 'Sun'];
-
-  for (let i = 0; i < 5; i++) {
-    const daySeed = (positiveHash + i * 7) % conditions.length;
-    const condObj = conditions[daySeed];
-    const high = baseTemp + ((i % 3) - 1) * 2;
-    const low = high - 6 - (i % 2);
-
-    days.push({
-      date: `2026-10-${14 + i}`,
-      dayName: dayNames[i],
-      dayLabel: dayLabels[i],
-      condition: condObj.cond,
-      conditionDescription: condObj.desc,
-      icon: condObj.icon,
-      highC: high,
-      lowC: low,
-      precipitationPercent: (daySeed * 18) % 55,
-      humidity: 45 + ((positiveHash + i) % 25),
-      windSpeedKmh: 10 + ((positiveHash + i * 3) % 18),
-      uvIndex: 3 + (i % 3),
-      clothingTip: 'Comfortable layers with a light outer shell for morning walks.',
-      hourlyPreview: [
-        { time: '09:00', tempC: low + 2, icon: condObj.icon, condition: condObj.cond },
-        { time: '12:00', tempC: high - 1, icon: condObj.icon, condition: condObj.cond },
-        { time: '15:00', tempC: high, icon: condObj.icon, condition: condObj.cond },
-        { time: '18:00', tempC: low + 3, icon: 'bedtime', condition: 'Cool' },
-        { time: '21:00', tempC: low, icon: 'bedtime', condition: 'Night' },
-      ],
-    });
-  }
-
-  return {
-    destination: dest,
-    country: country || 'Expedition Destination',
-    currentTempC: baseTemp,
-    feelsLikeC: baseTemp - 1,
-    currentCondition: conditions[positiveHash % conditions.length].cond,
-    currentIcon: conditions[positiveHash % conditions.length].icon,
-    humidity: 54,
-    windKmh: 14,
-    uvIndex: 4,
-    airQuality: 'Good (AQI 24)',
-    sunrise: '06:30 AM',
-    sunset: '06:00 PM',
-    lastUpdated: 'Just now',
-    expeditionInsight: `Mild travel conditions forecast for ${dest}. Standard travel capsule wardrobe with breathable windproof layers recommended.`,
-    forecast: days,
-  };
+  return res.json();
 }
 
 /**
- * Fetch 5-Day Weather Forecast via Mock API (simulating async latency)
+ * Fetch 5-Day Weather Forecast for a destination name
  */
 export async function fetch5DayForecast(
   destination: string,
   country?: string
 ): Promise<DestinationWeatherResponse> {
-  // Simulate network latency (250ms)
-  await new Promise((resolve) => setTimeout(resolve, 250));
+  const dest = destination.trim() || 'Destination';
+  const ctry = country || '';
 
-  const clean = destination.toLowerCase().trim();
+  // Approximate coordinate defaults for prominent regions if queried by name
+  const KNOWN_COORDS: Record<string, { lat: number; lon: number }> = {
+    kyoto: { lat: 35.0116, lon: 135.7681 },
+    tokyo: { lat: 35.6762, lon: 139.6503 },
+    paris: { lat: 48.8566, lon: 2.3522 },
+    rome: { lat: 41.9028, lon: 12.4964 },
+    amalfi: { lat: 40.634, lon: 14.6027 },
+    london: { lat: 51.5074, lon: -0.1278 },
+    newyork: { lat: 40.7128, lon: -74.006 },
+  };
 
-  // Match keyword in known destinations
-  if (clean.includes('kyoto') || clean.includes('japan') || clean.includes('tokyo')) {
-    return { ...KNOWN_DESTINATIONS.kyoto };
-  }
-  if (clean.includes('amalfi') || clean.includes('italy') || clean.includes('positano') || clean.includes('ravello')) {
-    return { ...KNOWN_DESTINATIONS.amalfi };
-  }
-  if (clean.includes('patagonia') || clean.includes('chile') || clean.includes('argentina') || clean.includes('torres')) {
-    return { ...KNOWN_DESTINATIONS.patagonia };
-  }
-  if (clean.includes('scotland') || clean.includes('highland') || clean.includes('skye') || clean.includes('uk')) {
-    return { ...KNOWN_DESTINATIONS.scotland };
-  }
-  if (clean.includes('reykjavik') || clean.includes('iceland') || clean.includes('vik')) {
-    return { ...KNOWN_DESTINATIONS.reykjavik };
+  const key = dest.toLowerCase().replace(/[^a-z]/g, '');
+  const match = KNOWN_COORDS[key];
+
+  if (match) {
+    try {
+      const real = await fetchRealWeather(match.lat, match.lon);
+      const forecastDays: DailyWeatherForecast[] = real.forecast.slice(0, 5).map((d) => ({
+        date: d.date,
+        dayName: d.dayName,
+        dayLabel: d.dayLabel,
+        condition: d.condition,
+        conditionDescription: d.condition,
+        icon: d.icon,
+        highC: d.highC,
+        lowC: d.lowC,
+        precipitationPercent: d.precipitationPercent,
+        humidity: real.humidity,
+        windSpeedKmh: real.windKmh,
+        uvIndex: 4,
+        clothingTip: 'Check local weather advisory before departure.',
+        hourlyPreview: [],
+      }));
+
+      return {
+        destination: dest,
+        country: ctry,
+        currentTempC: real.currentTempC,
+        feelsLikeC: real.feelsLikeC,
+        currentCondition: real.condition,
+        currentIcon: real.icon,
+        humidity: real.humidity,
+        windKmh: real.windKmh,
+        uvIndex: 4,
+        airQuality: 'Open-Meteo Verified',
+        forecast: forecastDays,
+        expeditionInsight: `Live atmospheric conditions reported for ${dest} via Open-Meteo.`,
+        sunrise: real.sunrise || '06:00 AM',
+        sunset: real.sunset || '06:00 PM',
+        lastUpdated: 'Just now',
+      };
+    } catch (e) {
+      console.warn('Real weather lookup failed, falling back to basic forecast', e);
+    }
   }
 
-  // Dynamic procedural fallback for any other destination
-  return generateDynamicForecast(destination, country);
+  // Graceful fallback forecast
+  const today = new Date();
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const days: DailyWeatherForecast[] = [];
+
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const dayName = dayNames[d.getDay()];
+
+    days.push({
+      date: d.toISOString().split('T')[0],
+      dayName,
+      dayLabel: i === 0 ? 'Today' : dayName,
+      condition: 'Fair',
+      conditionDescription: 'Typical seasonal conditions',
+      icon: 'wb_sunny',
+      highC: 18,
+      lowC: 11,
+      precipitationPercent: 10,
+      humidity: 50,
+      windSpeedKmh: 12,
+      uvIndex: 3,
+      clothingTip: 'Dress in comfortable layers.',
+      hourlyPreview: [],
+    });
+  }
+
+  return {
+    destination: dest,
+    country: ctry,
+    currentTempC: 17,
+    feelsLikeC: 16,
+    currentCondition: 'Pleasant Weather',
+    currentIcon: 'wb_sunny',
+    humidity: 50,
+    windKmh: 12,
+    uvIndex: 3,
+    airQuality: 'Normal',
+    forecast: days,
+    expeditionInsight: `Pacing and packing advice for ${dest}.`,
+    sunrise: '06:15 AM',
+    sunset: '05:45 PM',
+    lastUpdated: 'Just now',
+  };
 }

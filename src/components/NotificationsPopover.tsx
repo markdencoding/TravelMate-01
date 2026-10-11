@@ -109,21 +109,27 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({ isOp
           {displayedNotifications.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 px-4 text-center gap-3">
               <div className="w-14 h-14 rounded-full bg-primary-fixed/40 text-primary flex items-center justify-center shadow-inner">
-                <span className="material-symbols-outlined text-[28px]">notifications_paused</span>
+                <span className="material-symbols-outlined text-[28px]">notifications_none</span>
               </div>
               <div className="flex flex-col gap-1">
-                <p className="font-section-title text-item-title text-on-surface">You’re all caught up!</p>
+                <p className="font-section-title text-item-title text-on-surface">
+                  {notifications.length === 0 ? 'No notifications yet' : 'You’re all caught up!'}
+                </p>
                 <p className="font-body text-caption text-on-surface-variant max-w-[280px]">
-                  No unread alerts — you’re fully up to date for your upcoming travels.
+                  {notifications.length === 0
+                    ? 'Important alerts, weather updates, and itinerary reminders will appear here.'
+                    : 'No unread alerts — you’re fully up to date for your upcoming travels.'}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setActiveSubTab('all')}
-                className="mt-1 h-8 px-3 bg-surface-container-high text-primary hover:bg-surface-variant font-button text-caption rounded-lg transition-colors cursor-pointer"
-              >
-                View All History
-              </button>
+              {notifications.length > 0 && activeSubTab === 'unread' && (
+                <button
+                  type="button"
+                  onClick={() => setActiveSubTab('all')}
+                  className="mt-1 h-8 px-3 bg-surface-container-high text-primary hover:bg-surface-variant font-button text-caption rounded-lg transition-colors cursor-pointer"
+                >
+                  View All History
+                </button>
+              )}
             </div>
           ) : (
             <>

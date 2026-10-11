@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useMemo, useEffect } from 'react';
 import { useTravelStore } from '../store';
 import { ExpenseCategory, ExpenseItem } from '../types';
@@ -8,6 +10,8 @@ import {
   getTripDestinationCurrency,
   formatCurrencyAmount,
 } from '../components/CurrencyConverter';
+import { formatCurrency } from '@/lib/currencies';
+import { createExpenseAction, deleteExpenseAction } from '@/app/actions/expenses';
 
 export const ExpensesScreen: React.FC = () => {
   const {
@@ -20,6 +24,7 @@ export const ExpensesScreen: React.FC = () => {
     setActiveTab,
     userPreferences,
     preferences,
+    openEditTripModal,
   } = useTravelStore();
 
   const [categoryFilter, setCategoryFilter] = useState<'all' | ExpenseCategory>('all');
@@ -28,8 +33,9 @@ export const ExpensesScreen: React.FC = () => {
   const [isTripDropdownOpen, setIsTripDropdownOpen] = useState(false);
   const [isConverterModalOpen, setIsConverterModalOpen] = useState(false);
 
-  // Active trip details
-  const activeTrip = trips.find((t) => t.id === activeTripId) || trips[0];
+  // Active trip details & single ledger currency
+  const activeTrip = trips.find((t) => t.id === activeTripId) || trips[0] || null;
+  const tripCurrency = activeTrip?.currency || 'USD';
 
   // User Home Currency and Local Destination Currency
   const homeCurrency = userPreferences?.currency || preferences?.currency || 'USD';
@@ -51,24 +57,22 @@ export const ExpensesScreen: React.FC = () => {
 
   // Quick Draft Form States
   const [formTitle, setFormTitle] = useState('');
-  const [formAmount, setFormAmount] = useState('85.00');
-  const [formCurrency, setFormCurrency] = useState(destinationCurrency);
+  const [formAmount, setFormAmount] = useState('');
   const [formCategory, setFormCategory] = useState<ExpenseCategory>('food');
-  const [formDay, setFormDay] = useState('Day 6 (Nov 17)');
-  const [formDayNumber, setFormDayNumber] = useState(6);
+  const [formDay, setFormDay] = useState('Day 1');
+  const [formDayNumber, setFormDayNumber] = useState(1);
   const [formStatus, setFormStatus] = useState('Planned / Estimated');
-  const [formNotes, setFormNotes] = useState('Table reservation for 2, 7:30pm');
+  const [formNotes, setFormNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
 
   // Calculated Metrics
   const totalPlannedUsd = useMemo(() => {
-    return expenses.reduce((acc, curr) => acc + curr.costUsd, 0) + 1747; // Base offset to match $2,580.00 with sample rows
+    return expenses.reduce((acc, curr) => acc + (curr.costUsd || curr.amount || 0), 0);
   }, [expenses]);
 
-  const targetBudget = activeTrip?.estimatedBudget || 2450;
+  const targetBudget = activeTrip ? (activeTrip.budget || activeTrip.estimatedBudget || 0) : 0;
   const variance = targetBudget - totalPlannedUsd;
-  const isOverBudget = variance < 0;
+  const isOverBudget = targetBudget > 0 && variance < 0;
 
   // Filter & Sort expenses
   const filteredExpenses = useMemo(() => {
@@ -97,25 +101,17 @@ export const ExpensesScreen: React.FC = () => {
     setIsSubmitting(true);
     const amountVal = parseFloat(formAmount) || 85.0;
 
-    // Convert based on entered formCurrency
+    // Standardize to trip currency and compute USD / JPY equivalents for reporting
+    const currInfo = SUPPORTED_CURRENCIES[tripCurrency] || SUPPORTED_CURRENCIES.USD;
     let costUsd = amountVal;
-    let costJpy = Math.round(amountVal * (liveExchangeRate || 154.2));
-
-    if (formCurrency === 'JPY') {
-      costUsd = Number((amountVal / (liveExchangeRate || 154.2)).toFixed(2));
-      costJpy = Math.round(amountVal);
-    } else if (formCurrency === 'EUR') {
-      costUsd = Number((amountVal / 0.925).toFixed(2));
-      costJpy = Math.round(costUsd * (liveExchangeRate || 154.2));
-    } else if (formCurrency === 'GBP') {
-      costUsd = Number((amountVal / 0.785).toFixed(2));
-      costJpy = Math.round(costUsd * (liveExchangeRate || 154.2));
-    } else if (formCurrency === destinationCurrency && destinationCurrency !== 'USD') {
-      costUsd = Number((amountVal / (liveExchangeRate || 1)).toFixed(2));
-      costJpy = Math.round(costUsd * 154.2);
+    if (tripCurrency === 'USD') {
+      costUsd = amountVal;
+    } else {
+      costUsd = Number((amountVal / (currInfo.baseRateToUsd || 1.0)).toFixed(2));
     }
+    const costJpy = Math.round(costUsd * (SUPPORTED_CURRENCIES.JPY?.baseRateToUsd || 154.2));
 
-    setTimeout(() => {
+    setTimeout(async () => {
       addExpense({
         tripId: activeTripId,
         title: formTitle,
@@ -124,11 +120,26 @@ export const ExpensesScreen: React.FC = () => {
         paymentStatus: formStatus,
         costUsd,
         costJpy,
+        amount: amountVal,
         dateStr: `Nov ${11 + formDayNumber}`,
         dayLabel: `Day ${formDayNumber}`,
         dayNumber: formDayNumber,
-        notes: formCurrency !== 'USD' ? `${formNotes} (${amountVal} ${formCurrency})` : formNotes,
+        notes: formNotes,
       });
+
+      try {
+        await createExpenseAction({
+          tripId: activeTripId,
+          title: formTitle,
+          category: formCategory,
+          paymentStatus: formStatus,
+          amount: amountVal,
+          dayNumber: formDayNumber,
+          notes: formNotes,
+        });
+      } catch (err) {
+        console.warn('Backend sync fallback for expense:', err);
+      }
 
       setFormTitle('');
       setFormAmount('85.00');
@@ -136,9 +147,47 @@ export const ExpensesScreen: React.FC = () => {
     }, 300);
   };
 
+  const handleDeleteExpense = async (id: string) => {
+    deleteExpense(id);
+    try {
+      await deleteExpenseAction(id);
+    } catch (err) {
+      console.warn('Backend sync fallback for expense deletion:', err);
+    }
+  };
 
-  const handleAutoAdjust = () => {
-    alert('Rebalancing applied! Adjusted Day 6 dinner to Casual Dining and opted for JR Pass, saving $140.00.');
+  const exportExpensesCsv = () => {
+    const headers = ['Date', 'Day', 'Category', 'Title', 'Cost (USD)', 'Status', 'Notes'];
+    const rows = filteredExpenses.map((exp) => [
+      exp.dateStr || '',
+      exp.dayLabel || `Day ${exp.dayNumber}`,
+      exp.category || '',
+      `"${(exp.title || '').replace(/"/g, '""')}"`,
+      exp.costUsd.toFixed(2),
+      exp.paymentStatus || '',
+      `"${(exp.notes || '').replace(/"/g, '""')}"`,
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `travelmate-expenses-${activeTrip?.id || 'export'}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleEditExpense = (exp: ExpenseItem) => {
+    setFormTitle(exp.title);
+    setFormAmount(exp.costUsd.toFixed(2));
+    setFormCategory(exp.category);
+    setFormDayNumber(exp.dayNumber);
+    setFormDay(`Day ${exp.dayNumber}`);
+    setFormNotes(exp.notes || '');
+    const panel = document.getElementById('addExpensePanel');
+    if (panel) panel.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
@@ -162,7 +211,7 @@ export const ExpensesScreen: React.FC = () => {
             Trips
           </button>
           <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-          <span className="text-primary font-body-medium font-semibold">{activeTrip.title}</span>
+          <span className="text-primary font-body-medium font-semibold">{activeTrip?.title || 'All Trips'}</span>
           <span className="material-symbols-outlined text-[14px]">chevron_right</span>
           <span className="text-on-surface font-semibold">Expenses</span>
         </nav>
@@ -182,7 +231,7 @@ export const ExpensesScreen: React.FC = () => {
               >
                 <span className="material-symbols-outlined text-secondary text-[18px]">calendar_today</span>
                 <span className="font-body-medium text-body text-on-surface font-semibold">
-                  {activeTrip.title} ({activeTrip.dateRange})
+                  {activeTrip ? `${activeTrip.title} (${activeTrip.dateRange})` : 'No Active Trip Selected'}
                 </span>
                 <span className="material-symbols-outlined text-on-surface-variant text-[18px]">
                   expand_more
@@ -223,57 +272,24 @@ export const ExpensesScreen: React.FC = () => {
               )}
             </div>
 
-            {/* Currency Mode Quick Switcher Bar */}
+            {/* Standard System Currency: Philippine Peso */}
             <div className="flex items-center gap-2 flex-wrap mt-1">
               <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider flex items-center gap-1">
-                <span className="material-symbols-outlined text-[14px] text-primary">currency_exchange</span>
-                <span>Currency View:</span>
+                <span className="material-symbols-outlined text-[14px] text-primary">payments</span>
+                <span>Ledger Currency:</span>
               </span>
-              <div className="inline-flex items-center p-0.5 bg-surface-container-lowest border border-surface-container-high/80 rounded-lg text-xs shadow-2xs">
-                <button
-                  type="button"
-                  onClick={() => setCurrencyDisplayMode('dual')}
-                  className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
-                    currencyDisplayMode === 'dual'
-                      ? 'bg-primary text-white shadow-2xs'
-                      : 'text-on-surface-variant hover:text-on-surface'
-                  }`}
-                  title="Show both Home & Local currencies side-by-side"
-                >
-                  Dual View ({SUPPORTED_CURRENCIES[homeCurrency]?.symbol || '$'} &amp; {SUPPORTED_CURRENCIES[destinationCurrency]?.symbol || '¥'})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrencyDisplayMode('destination')}
-                  className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
-                    currencyDisplayMode === 'destination'
-                      ? 'bg-primary text-white shadow-2xs'
-                      : 'text-on-surface-variant hover:text-on-surface'
-                  }`}
-                  title={`View all figures in ${destinationCurrency} local currency`}
-                >
-                  Local {destinationCurrency} ({SUPPORTED_CURRENCIES[destinationCurrency]?.symbol || ''})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrencyDisplayMode('home')}
-                  className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
-                    currencyDisplayMode === 'home'
-                      ? 'bg-primary text-white shadow-2xs'
-                      : 'text-on-surface-variant hover:text-on-surface'
-                  }`}
-                  title={`View all figures in ${homeCurrency} home currency`}
-                >
-                  Home {homeCurrency} ({SUPPORTED_CURRENCIES[homeCurrency]?.symbol || ''})
-                </button>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-surface-container-lowest border border-surface-container-high/80 rounded-lg text-xs font-bold text-on-surface shadow-2xs">
+                <span>🇵🇭</span>
+                <span>Philippine Peso (PHP, ₱)</span>
               </div>
-
-              <div className="hidden sm:inline-flex items-center gap-1.5 text-xs text-on-surface-variant bg-surface-container-lowest border border-surface-container-high/70 px-2.5 py-1 rounded-lg">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="font-mono text-[11px]">
-                  1 {homeCurrency} ≈ {liveExchangeRate < 1 ? liveExchangeRate.toFixed(4) : liveExchangeRate.toFixed(2)} {destinationCurrency}
-                </span>
-              </div>
+              <button
+                type="button"
+                onClick={() => setIsConverterModalOpen(true)}
+                className="text-xs text-primary font-semibold hover:underline flex items-center gap-1 cursor-pointer ml-1"
+              >
+                <span className="material-symbols-outlined text-[14px]">currency_exchange</span>
+                <span>Open Currency Converter</span>
+              </button>
             </div>
           </div>
 
@@ -295,7 +311,7 @@ export const ExpensesScreen: React.FC = () => {
               </span>
             </button>
             <button
-              onClick={() => setActiveTab('dossier')}
+              onClick={exportExpensesCsv}
               className="h-[44px] px-4 bg-surface-container-lowest hover:bg-surface-container-low text-primary font-button text-button rounded-lg shadow-sm flex items-center gap-2 transition-colors cursor-pointer border border-surface-container-high/60"
               type="button"
             >
@@ -304,6 +320,10 @@ export const ExpensesScreen: React.FC = () => {
             </button>
             <button
               onClick={() => {
+                if (trips.length === 0) {
+                  openEditTripModal();
+                  return;
+                }
                 const el = document.getElementById('addExpensePanel');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
               }}
@@ -318,9 +338,31 @@ export const ExpensesScreen: React.FC = () => {
       </div>
 
 
-      {/* Top Metrics Row: Sticky summary card at the top on mobile */}
-      <div className="flex flex-col gap-space-md sticky top-14 md:static z-20 bg-white/95 dark:bg-slate-900/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none -mx-4 px-4 md:mx-0 md:px-0 py-2 md:py-0 border-b md:border-b-0 border-slate-200/80 dark:border-slate-800 transition-colors">
-        <div className="flex md:grid md:grid-cols-3 gap-space-md overflow-x-auto md:overflow-x-visible snap-x snap-mandatory no-scrollbar pb-1 md:pb-0">
+      {trips.length === 0 ? (
+        <div className="bg-surface-container-lowest p-space-xl rounded-xl flex flex-col items-center justify-center text-center shadow-sm border border-surface-container-high/40 py-16 animate-fade-in">
+          <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant mb-space-sm">
+            <span className="material-symbols-outlined text-[32px]">account_balance_wallet</span>
+          </div>
+          <h4 className="font-item-title text-item-title text-on-surface font-semibold text-lg">
+            No trips created yet
+          </h4>
+          <p className="font-body text-body text-on-surface-variant mt-1 max-w-sm">
+            Create an expedition first to begin tracking expenses, category budgets, and multi-currency conversions.
+          </p>
+          <button
+            onClick={() => openEditTripModal()}
+            className="mt-space-md h-[40px] px-5 rounded-lg bg-secondary hover:bg-secondary-container text-on-secondary font-button text-caption shadow-sm cursor-pointer font-semibold flex items-center gap-1.5"
+            type="button"
+          >
+            <span className="material-symbols-outlined text-[18px]">add</span>
+            <span>+ Create First Trip</span>
+          </button>
+        </div>
+      ) : (
+        <>
+          {/* Top Metrics Row: Sticky summary card at the top on mobile */}
+          <div className="flex flex-col gap-space-md sticky top-14 md:static z-20 bg-white/95 dark:bg-slate-900/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none -mx-4 px-4 md:mx-0 md:px-0 py-2 md:py-0 border-b md:border-b-0 border-slate-200/80 dark:border-slate-800 transition-colors">
+            <div className="flex md:grid md:grid-cols-3 gap-space-md overflow-x-auto md:overflow-x-visible snap-x snap-mandatory no-scrollbar pb-1 md:pb-0">
           {/* Metric Card 1: Budget Target */}
           <div className="min-w-[85%] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between border border-surface-container-high/40">
             <div className="flex items-center justify-between">
@@ -333,34 +375,13 @@ export const ExpensesScreen: React.FC = () => {
             </div>
             <div className="mt-3">
               <div className="font-display text-display text-on-surface tracking-tight font-bold">
-                {currencyDisplayMode === 'destination'
-                  ? formatCurrencyAmount(targetBudget * liveExchangeRate, destinationCurrency)
-                  : formatCurrencyAmount(targetBudget, homeCurrency)}
+                {formatCurrency(targetBudget)}
               </div>
               <div className="flex items-center gap-1.5 mt-1 font-caption text-caption text-on-surface-variant flex-wrap">
-                {currencyDisplayMode === 'dual' && (
-                  <>
-                    <span className="font-semibold text-primary">
-                      ≈ {formatCurrencyAmount(targetBudget * liveExchangeRate, destinationCurrency)}
-                    </span>
-                    <span>•</span>
-                  </>
-                )}
-                {currencyDisplayMode === 'destination' && (
-                  <>
-                    <span className="font-semibold text-primary">
-                      ≈ {formatCurrencyAmount(targetBudget, homeCurrency)} Base
-                    </span>
-                    <span>•</span>
-                  </>
-                )}
-                <span>Allocated for {activeTrip.daysCount} days</span>
+                <span>Allocated for {activeTrip?.daysCount || 1} days</span>
                 <span>•</span>
                 <span className="font-semibold text-primary">
-                  ~{currencyDisplayMode === 'destination'
-                    ? formatCurrencyAmount(Math.round((targetBudget * liveExchangeRate) / activeTrip.daysCount), destinationCurrency)
-                    : formatCurrencyAmount(Math.round(targetBudget / activeTrip.daysCount), homeCurrency)}
-                  /day target
+                  ~{formatCurrency(Math.round(targetBudget / (activeTrip?.daysCount || 1)))}/day target
                 </span>
               </div>
             </div>
@@ -381,24 +402,14 @@ export const ExpensesScreen: React.FC = () => {
             </div>
             <div className="mt-3">
               <div className="font-display text-display text-on-surface tracking-tight font-bold">
-                {currencyDisplayMode === 'destination'
-                  ? formatCurrencyAmount(totalPlannedUsd * liveExchangeRate, destinationCurrency)
-                  : formatCurrencyAmount(totalPlannedUsd, homeCurrency)}
+                {formatCurrency(totalPlannedUsd)}
               </div>
               <div className="flex items-center gap-1.5 mt-1 font-caption text-caption text-on-surface-variant flex-wrap">
-                {currencyDisplayMode !== 'destination' ? (
-                  <span>
-                    ≈ {formatCurrencyAmount(totalPlannedUsd * liveExchangeRate, destinationCurrency)} {destinationCurrency}
-                  </span>
-                ) : (
-                  <span>
-                    ≈ {formatCurrencyAmount(totalPlannedUsd, homeCurrency)} {homeCurrency}
-                  </span>
-                )}
-                <span>•</span>
                 <span className="text-secondary font-medium">
-                  {((totalPlannedUsd / targetBudget) * 100).toFixed(1)}% of budget
+                  {targetBudget > 0 ? ((totalPlannedUsd / targetBudget) * 100).toFixed(1) : '0'}% of budget
                 </span>
+                <span>•</span>
+                <span>{expenses.length} tracked expenditures</span>
               </div>
             </div>
             <div className="w-full bg-surface-container-high h-1 rounded-full mt-3 overflow-hidden">
@@ -406,39 +417,66 @@ export const ExpensesScreen: React.FC = () => {
             </div>
           </div>
 
-          {/* Metric Card 3: Over-Budget Alert Card */}
-          <div className="min-w-[85%] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink bg-error-container text-on-error-container rounded-xl p-space-md shadow-sm flex flex-col justify-between border border-error/20">
+          {/* Metric Card 3: Budget Variance Card */}
+          <div
+            className={`min-w-[85%] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink rounded-xl p-space-md shadow-sm flex flex-col justify-between border ${
+              isOverBudget
+                ? 'bg-error-container text-on-error-container border-error/20'
+                : 'bg-surface-container-lowest text-on-surface border-surface-container-high/40'
+            }`}
+          >
             <div className="flex items-center justify-between">
-              <span className="font-caption text-caption uppercase tracking-wider text-on-error-container font-bold flex items-center gap-1">
-                <span className="material-symbols-outlined text-[16px] text-error">warning</span>
+              <span
+                className={`font-caption text-caption uppercase tracking-wider font-bold flex items-center gap-1 ${
+                  isOverBudget ? 'text-on-error-container' : 'text-on-surface-variant'
+                }`}
+              >
+                <span className={`material-symbols-outlined text-[16px] ${isOverBudget ? 'text-error' : 'text-primary'}`}>
+                  {isOverBudget ? 'warning' : 'verified'}
+                </span>
                 Budget Variance
               </span>
-              <span className="bg-error text-on-error font-badge text-badge px-2 py-0.5 rounded-full uppercase font-bold">
-                Alert
+              <span
+                className={`font-badge text-badge px-2 py-0.5 rounded-full uppercase font-bold ${
+                  isOverBudget ? 'bg-error text-on-error' : 'bg-surface-container-high text-primary'
+                }`}
+              >
+                {isOverBudget ? 'Alert' : 'On Track'}
               </span>
             </div>
             <div className="mt-2">
-              <div className="font-display text-display text-error font-bold tracking-tight">
-                -{currencyDisplayMode === 'destination'
-                  ? formatCurrencyAmount(Math.abs(variance) * liveExchangeRate, destinationCurrency)
-                  : formatCurrencyAmount(Math.abs(variance), homeCurrency)}
+              <div
+                className={`font-display text-display font-bold tracking-tight ${
+                  isOverBudget ? 'text-error' : 'text-primary'
+                }`}
+              >
+                {isOverBudget ? '-' : '+'}
+                {formatCurrency(Math.abs(variance))}
               </div>
-              <div className="font-caption text-caption text-on-error-container font-medium mt-1 leading-snug">
-                Notice: Expenses exceed budget target by {Math.abs(((variance / targetBudget) * 100)).toFixed(1)}% (
-                {currencyDisplayMode === 'destination'
-                  ? formatCurrencyAmount(Math.abs(variance) * liveExchangeRate, destinationCurrency)
-                  : formatCurrencyAmount(Math.abs(variance), homeCurrency)}{' '}
-                surplus).
+              <div className="font-caption text-caption text-on-surface-variant font-medium mt-1 leading-snug">
+                {isOverBudget ? (
+                  <>
+                    Notice: Expenses exceed budget target by{' '}
+                    {targetBudget > 0 ? Math.abs((variance / targetBudget) * 100).toFixed(1) : '0.0'}%
+                  </>
+                ) : (
+                  <>
+                    Buffer remaining:{' '}
+                    {targetBudget > 0 ? ((variance / targetBudget) * 100).toFixed(1) : '100.0'}% of planned target
+                  </>
+                )}
               </div>
             </div>
-            <div className="mt-2 text-[11px] text-error font-semibold flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">trending_up</span>
-              <span>Needs reallocation before departure</span>
+            <div className={`mt-2 text-[11px] font-semibold flex items-center gap-1 ${isOverBudget ? 'text-error' : 'text-primary'}`}>
+              <span className="material-symbols-outlined text-[14px]">
+                {isOverBudget ? 'trending_up' : 'check_circle'}
+              </span>
+              <span>{isOverBudget ? 'Needs reallocation before departure' : 'Disciplined spending allocation'}</span>
             </div>
           </div>
         </div>
 
-        {/* Segmented Multi-Category Progress Rail Over 100% */}
+        {/* Segmented Multi-Category Progress Rail */}
         <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-xs border border-surface-container-high/40">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
@@ -446,25 +484,27 @@ export const ExpensesScreen: React.FC = () => {
                 Budget Allocation Stream
               </span>
               <span className="font-caption text-caption text-on-surface-variant">
-                ($2,450.00 Baseline Cap)
+                ({formatCurrency(targetBudget)} Baseline Cap)
               </span>
             </div>
             <div className="flex items-center gap-3 font-caption text-caption flex-wrap">
               <span className="flex items-center gap-1 font-medium">
-                <span className="w-2.5 h-2.5 rounded-full bg-secondary" /> Food $850
+                <span className="w-2.5 h-2.5 rounded-full bg-secondary" /> Food {formatCurrency(expenses.filter(e => e.category === 'food' || e.category === 'dining').reduce((s, e) => s + (e.amount || e.costUsd || 0), 0), { maximumFractionDigits: 0 })}
               </span>
               <span className="flex items-center gap-1 font-medium">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#7C3AED]" /> Activities $600
+                <span className="w-2.5 h-2.5 rounded-full bg-[#7C3AED]" /> Activities {formatCurrency(expenses.filter(e => e.category === 'activities' || e.category === 'sightseeing').reduce((s, e) => s + (e.amount || e.costUsd || 0), 0), { maximumFractionDigits: 0 })}
               </span>
               <span className="flex items-center gap-1 font-medium">
-                <span className="w-2.5 h-2.5 rounded-full bg-primary-container" /> Transit $550
+                <span className="w-2.5 h-2.5 rounded-full bg-primary-container" /> Transit {formatCurrency(expenses.filter(e => e.category === 'transport').reduce((s, e) => s + (e.amount || e.costUsd || 0), 0), { maximumFractionDigits: 0 })}
               </span>
               <span className="flex items-center gap-1 font-medium">
-                <span className="w-2.5 h-2.5 rounded-full bg-inverse-primary" /> Lodging $500
+                <span className="w-2.5 h-2.5 rounded-full bg-inverse-primary" /> Lodging {formatCurrency(expenses.filter(e => e.category === 'lodging').reduce((s, e) => s + (e.amount || e.costUsd || 0), 0), { maximumFractionDigits: 0 })}
               </span>
-              <span className="flex items-center gap-1 font-semibold text-error">
-                <span className="w-2.5 h-2.5 rounded-full bg-error" /> Over-budget +$130
-              </span>
+              {isOverBudget && (
+                <span className="flex items-center gap-1 font-semibold text-error">
+                  <span className="w-2.5 h-2.5 rounded-full bg-error" /> Over-budget +{formatCurrency(Math.abs(variance), { maximumFractionDigits: 0 })}
+                </span>
+              )}
             </div>
           </div>
 
@@ -480,32 +520,44 @@ export const ExpensesScreen: React.FC = () => {
             {/* Multi-Segment Bar */}
             <div className="h-4 w-full bg-surface-container rounded-full flex overflow-hidden p-0.5 relative shadow-inner">
               <div
-                className="h-full bg-secondary rounded-l-full relative cursor-pointer"
-                style={{ width: '32.9%' }}
-                title="Food & Culinary: $850 (33%)"
+                className="h-full bg-secondary rounded-l-full relative cursor-pointer transition-all"
+                style={{
+                  width: targetBudget > 0 ? `${Math.min((expenses.filter(e => e.category === 'food' || e.category === 'dining').reduce((s, e) => s + (e.costUsd || e.amount || 0), 0) / targetBudget) * 100, 100)}%` : '0%',
+                }}
+                title="Food & Dining"
               />
               <div
-                className="h-full bg-[#7C3AED] relative cursor-pointer"
-                style={{ width: '23.2%' }}
-                title="Activities & Shrines: $600 (23%)"
+                className="h-full bg-[#7C3AED] relative cursor-pointer transition-all"
+                style={{
+                  width: targetBudget > 0 ? `${Math.min((expenses.filter(e => e.category === 'activities' || e.category === 'sightseeing').reduce((s, e) => s + (e.costUsd || e.amount || 0), 0) / targetBudget) * 100, 100)}%` : '0%',
+                }}
+                title="Activities"
               />
               <div
-                className="h-full bg-primary-container relative cursor-pointer"
-                style={{ width: '21.3%' }}
-                title="Transit & Shinkansen: $550 (21%)"
+                className="h-full bg-primary-container relative cursor-pointer transition-all"
+                style={{
+                  width: targetBudget > 0 ? `${Math.min((expenses.filter(e => e.category === 'transport').reduce((s, e) => s + (e.costUsd || e.amount || 0), 0) / targetBudget) * 100, 100)}%` : '0%',
+                }}
+                title="Transport"
               />
               <div
-                className="h-full bg-inverse-primary relative cursor-pointer"
-                style={{ width: '17.5%' }}
-                title="Accommodations: $500 (19%)"
+                className="h-full bg-inverse-primary relative cursor-pointer transition-all"
+                style={{
+                  width: targetBudget > 0 ? `${Math.min((expenses.filter(e => e.category === 'lodging').reduce((s, e) => s + (e.costUsd || e.amount || 0), 0) / targetBudget) * 100, 100)}%` : '0%',
+                }}
+                title="Accommodation"
               />
-              <div
-                className="h-full rounded-r-full bg-error relative cursor-pointer overflow-hidden"
-                style={{ width: '5.1%' }}
-                title="Surplus Deficit: $130 (5%)"
-              >
-                <div className="w-full h-full opacity-40 bg-[repeating-linear-gradient(45deg,#ffffff,#ffffff_4px,transparent_4px,transparent_8px)]" />
-              </div>
+              {isOverBudget && (
+                <div
+                  className="h-full rounded-r-full bg-error relative cursor-pointer overflow-hidden transition-all"
+                  style={{
+                    width: targetBudget > 0 ? `${Math.min((Math.abs(variance) / targetBudget) * 100, 20)}%` : '0%',
+                  }}
+                  title="Over budget deficit"
+                >
+                  <div className="w-full h-full opacity-40 bg-[repeating-linear-gradient(45deg,#ffffff,#ffffff_4px,transparent_4px,transparent_8px)]" />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -516,7 +568,7 @@ export const ExpensesScreen: React.FC = () => {
         {/* Left Column: Interactive Donut Breakdown (7 cols) */}
         <div className="lg:col-span-7 bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between border border-surface-container-high/40">
           <ExpenseDonutChart
-            expenses={expenses.filter((e) => e.tripId === activeTripId || activeTripId === 'kyoto-tokyo')}
+            expenses={expenses.filter((e) => e.tripId === activeTripId)}
             selectedCategory={categoryFilter}
             onSelectCategory={(cat) => setCategoryFilter(cat)}
             currency={currencyDisplayMode === 'destination' ? destinationCurrency : homeCurrency}
@@ -530,58 +582,33 @@ export const ExpensesScreen: React.FC = () => {
 
         {/* Right Column: Reallocation & JPY Peg (5 cols) */}
         <div className="lg:col-span-5 flex flex-col gap-space-md">
-          {/* Optimization Notice */}
-          <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-3 relative overflow-hidden border border-surface-container-high/40">
-            <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-error-container text-error flex items-center justify-center shrink-0">
-                <span className="material-symbols-outlined text-[24px]">crisis_alert</span>
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="font-item-title text-item-title text-on-surface font-bold">
-                    Budget Optimization Notice
-                  </span>
-                  <span className="font-badge text-badge px-2 py-0.5 rounded-full bg-error-container text-error uppercase font-bold">
-                    Action Rec.
-                  </span>
+          {/* Optimization Notice (Only show when over budget with real expenses) */}
+          {isOverBudget && expenses.length > 0 && (
+            <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-3 relative overflow-hidden border border-surface-container-high/40 animate-fade-in">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-error-container text-error flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[24px]">crisis_alert</span>
                 </div>
-                <p className="font-body text-small text-on-surface-variant mt-1 leading-relaxed">
-                  Accommodation and dining are tracking higher than estimated. Consider adjusting{' '}
-                  <strong className="text-on-surface font-semibold">Day 6 activities</strong> to return within
-                  target.
-                </p>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-item-title text-item-title text-on-surface font-bold">
+                      Budget Optimization Notice
+                    </span>
+                    <span className="font-badge text-badge px-2 py-0.5 rounded-full bg-error-container text-error uppercase font-bold">
+                      Action Rec.
+                    </span>
+                  </div>
+                  <p className="font-body text-small text-on-surface-variant mt-1 leading-relaxed">
+                    Expenses exceed allocated budget target by{' '}
+                    <strong className="text-on-surface font-semibold">
+                      {formatCurrencyAmount(Math.abs(variance), homeCurrency)}
+                    </strong>
+                    . Consider reallocating or pacing optional activities.
+                  </p>
+                </div>
               </div>
             </div>
-
-            <div className="bg-surface-container-low rounded-lg p-3 flex flex-col gap-2 mt-1">
-              <div className="font-caption text-caption text-primary font-bold flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-[16px]">lightbulb</span>
-                Suggested Rebalancing Actions
-              </div>
-              <div className="flex items-center justify-between font-caption text-caption text-on-surface">
-                <span>Shift Day 6 Kaiseki dinner to Casual Dining</span>
-                <span className="font-bold text-primary">Save ~$85</span>
-              </div>
-              <div className="flex items-center justify-between font-caption text-caption text-on-surface">
-                <span>Opt for JR Kansai Pass vs Individual Express</span>
-                <span className="font-bold text-primary">Save ~$55</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-1">
-              <span className="font-caption text-caption text-on-surface-variant">
-                Potential Net Adjustment: <strong className="text-primary font-bold">-$140.00</strong>
-              </span>
-              <button
-                type="button"
-                onClick={handleAutoAdjust}
-                className="font-button text-button text-primary hover:text-primary-container flex items-center gap-1 text-sm font-bold transition-colors cursor-pointer"
-              >
-                <span>Auto-adjust Itinerary</span>
-                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-              </button>
-            </div>
-          </div>
+          )}
 
           {/* Real-Time Currency Converter Hub */}
           <div id="currencyConverterHub" className="scroll-mt-6">
@@ -596,8 +623,7 @@ export const ExpensesScreen: React.FC = () => {
                 }
               }}
               onApplyToExpenseDraft={(amt, curr, note) => {
-                setFormAmount(amt.toFixed(curr === 'JPY' || curr === 'KRW' ? 0 : 2));
-                setFormCurrency(curr);
+                setFormAmount(amt.toFixed(tripCurrency === 'JPY' || tripCurrency === 'KRW' ? 0 : 2));
                 if (note) setFormNotes((prev) => (prev ? `${prev} • ${note}` : note));
                 const el = document.getElementById('addExpensePanel');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
@@ -705,84 +731,80 @@ export const ExpensesScreen: React.FC = () => {
 
           {/* Mobile Expense Cards (below 768px) */}
           <div className="flex md:hidden flex-col gap-3">
-            {filteredExpenses.map((exp) => (
-              <div
-                key={exp.id}
-                className="bg-surface-container-low rounded-xl p-3.5 border border-surface-container-high/60 flex flex-col gap-2.5"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                          exp.category === 'transport'
-                            ? 'bg-surface-container-high text-primary'
-                            : exp.category === 'lodging'
-                            ? 'bg-surface-variant text-primary'
-                            : exp.category === 'activities'
-                            ? 'bg-[#EDE9FE] text-[#7C3AED]'
-                            : 'bg-secondary-fixed text-on-secondary-fixed'
-                        }`}
-                      >
-                        {exp.category}
-                      </span>
-                      <span className="text-xs text-on-surface-variant font-medium">
-                        {exp.dayLabel} • {exp.dateStr}
-                      </span>
-                    </div>
-                    <h4 className="font-body-medium text-sm text-on-surface font-bold mt-1">
-                      {exp.title}
-                    </h4>
-                    <span className="text-xs text-on-surface-variant">
-                      {exp.subtitle}
-                    </span>
-                  </div>
-
-                  {/* Cost badge */}
-                  <div className="text-right shrink-0">
-                    <div className="font-body-medium text-sm text-on-surface font-bold">
-                      ${exp.costUsd.toFixed(2)}
-                    </div>
-                    {destinationCurrency !== 'USD' && (
-                      <div className="text-[11px] text-on-surface-variant font-mono">
-                        {formatCurrencyAmount(
-                          destinationCurrency === 'JPY'
-                            ? exp.costJpy
-                            : exp.costUsd * liveExchangeRate,
-                          destinationCurrency
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-surface-container-high/40 text-xs">
-                  <span className="inline-flex items-center gap-1 text-[11px] text-primary font-medium bg-surface-variant px-2 py-0.5 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                    {exp.paymentStatus}
-                  </span>
-
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={() => alert(`Editing item: ${exp.title}`)}
-                      className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-                      title="Edit expense"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">edit</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => deleteExpense(exp.id)}
-                      className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-error transition-colors cursor-pointer"
-                      title="Delete expense"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">delete</span>
-                    </button>
-                  </div>
-                </div>
+            {filteredExpenses.length === 0 ? (
+              <div className="p-6 text-center text-on-surface-variant text-body bg-surface-container-low rounded-xl">
+                No expenses logged yet.
               </div>
-            ))}
+            ) : (
+              filteredExpenses.map((exp) => (
+                <div
+                  key={exp.id}
+                  className="bg-surface-container-low rounded-xl p-3.5 border border-surface-container-high/60 flex flex-col gap-2.5"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                            exp.category === 'transport'
+                              ? 'bg-surface-container-high text-primary'
+                              : exp.category === 'lodging'
+                              ? 'bg-surface-variant text-primary'
+                              : exp.category === 'activities'
+                              ? 'bg-[#EDE9FE] text-[#7C3AED]'
+                              : 'bg-secondary-fixed text-on-secondary-fixed'
+                          }`}
+                        >
+                          {exp.category}
+                        </span>
+                        <span className="text-xs text-on-surface-variant font-medium">
+                          {exp.dayLabel} • {exp.dateStr}
+                        </span>
+                      </div>
+                      <h4 className="font-body-medium text-sm text-on-surface font-bold mt-1">
+                        {exp.title}
+                      </h4>
+                      <span className="text-xs text-on-surface-variant">
+                        {exp.subtitle}
+                      </span>
+                    </div>
+
+                    {/* Cost badge */}
+                    <div className="text-right shrink-0">
+                      <div className="font-body-medium text-sm text-on-surface font-bold">
+                        {formatCurrency(exp.amount || exp.costUsd || 0)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-surface-container-high/40 text-xs">
+                    <span className="inline-flex items-center gap-1 text-[11px] text-primary font-medium bg-surface-variant px-2 py-0.5 rounded-full">
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                      {exp.paymentStatus}
+                    </span>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => alert(`Editing item: ${exp.title}`)}
+                        className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+                        title="Edit expense"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">edit</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteExpense(exp.id)}
+                        className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-error transition-colors cursor-pointer"
+                        title="Delete expense"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           {/* Desktop Table */}
@@ -800,7 +822,14 @@ export const ExpensesScreen: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-container text-body font-body">
-                {filteredExpenses.map((exp) => (
+                {filteredExpenses.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-on-surface-variant text-body">
+                      No expenses logged yet.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredExpenses.map((exp) => (
                   <tr key={exp.id} className="hover:bg-surface-container-low/60 transition-colors group">
                     <td className="py-3 px-3 whitespace-nowrap">
                       <div className="font-body-medium text-on-surface font-semibold">{exp.dateStr}</div>
@@ -845,39 +874,9 @@ export const ExpensesScreen: React.FC = () => {
                       </span>
                     </td>
                     <td className="py-3 px-3 text-right whitespace-nowrap">
-                      {currencyDisplayMode === 'destination' ? (
-                        <>
-                          <div className="font-body-medium text-body text-on-surface font-bold">
-                            {formatCurrencyAmount(
-                              destinationCurrency === 'JPY'
-                                ? exp.costJpy
-                                : exp.costUsd * liveExchangeRate,
-                              destinationCurrency
-                            )}
-                          </div>
-                          <div className="font-caption text-caption text-on-surface-variant font-mono text-[11px]">
-                            ${exp.costUsd.toFixed(2)} USD
-                          </div>
-                        </>
-                      ) : currencyDisplayMode === 'home' ? (
-                        <div className="font-body-medium text-body text-on-surface font-bold">
-                          ${exp.costUsd.toFixed(2)}
-                        </div>
-                      ) : (
-                        <>
-                          <div className="font-body-medium text-body text-on-surface font-bold">
-                            ${exp.costUsd.toFixed(2)}
-                          </div>
-                          <div className="font-caption text-caption text-on-surface-variant font-mono text-[11px]">
-                            {formatCurrencyAmount(
-                              destinationCurrency === 'JPY'
-                                ? exp.costJpy
-                                : exp.costUsd * liveExchangeRate,
-                              destinationCurrency
-                            )}
-                          </div>
-                        </>
-                      )}
+                      <div className="font-body-medium text-body text-on-surface font-bold">
+                        {formatCurrency(exp.amount || exp.costUsd || 0)}
+                      </div>
                     </td>
                     <td className="py-3 px-3 hidden lg:table-cell max-w-[180px] truncate text-on-surface-variant font-caption text-caption">
                       {exp.notes}
@@ -885,15 +884,15 @@ export const ExpensesScreen: React.FC = () => {
                     <td className="py-3 px-3 text-center whitespace-nowrap">
                       <div className="flex items-center justify-center gap-1">
                         <button
-                          onClick={() => alert(`Editing item: ${exp.title}`)}
+                          onClick={() => handleEditExpense(exp)}
                           className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-                          title="Edit"
+                          title="Edit in form"
                           type="button"
                         >
                           <span className="material-symbols-outlined text-[18px]">edit</span>
                         </button>
                         <button
-                          onClick={() => deleteExpense(exp.id)}
+                          onClick={() => handleDeleteExpense(exp.id)}
                           className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-error transition-colors cursor-pointer"
                           title="Delete"
                           type="button"
@@ -903,33 +902,19 @@ export const ExpensesScreen: React.FC = () => {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>
 
           {/* Table Footer */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-space-xs text-caption font-caption text-on-surface-variant">
-            <div>Showing {filteredExpenses.length} of 18 tracked expense milestones</div>
-            <div className="flex items-center gap-1">
-              <button
-                className="p-1.5 rounded-lg hover:bg-surface-container disabled:opacity-40"
-                disabled
-                type="button"
-              >
-                <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-              </button>
-              <span className="px-2.5 py-1 rounded-md bg-surface-container text-on-surface font-bold">1</span>
-              <button className="px-2.5 py-1 rounded-md hover:bg-surface-container cursor-pointer" type="button">
-                2
-              </button>
-              <button className="px-2.5 py-1 rounded-md hover:bg-surface-container cursor-pointer" type="button">
-                3
-              </button>
-              <button className="p-1.5 rounded-lg hover:bg-surface-container cursor-pointer" type="button">
-                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-              </button>
+          <div className="flex items-center justify-between pt-space-xs text-caption font-caption text-on-surface-variant">
+            <div>
+              Showing {filteredExpenses.length} tracked expense{filteredExpenses.length === 1 ? '' : 's'}
             </div>
+            <span className="text-[11px] font-medium text-on-surface-variant">
+              Full dataset synchronized
+            </span>
           </div>
         </div>
 
@@ -968,63 +953,25 @@ export const ExpensesScreen: React.FC = () => {
               />
             </div>
 
-            {/* Amount & Currency */}
+            {/* Amount with ₱ Prefix */}
             <div className="flex flex-col gap-1.5">
-              <div className="grid grid-cols-12 gap-2">
-                <div className="col-span-7 flex flex-col gap-1">
-                  <label className="font-caption text-caption font-bold text-on-surface">Amount</label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 font-body text-body text-on-surface-variant font-medium">
-                      {SUPPORTED_CURRENCIES[formCurrency]?.symbol || '$'}
-                    </span>
-                    <input
-                      className="w-full h-[44px] pl-7 pr-3 bg-surface-container-low rounded-lg font-body text-body text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary shadow-xs"
-                      placeholder="85.00"
-                      required
-                      step="any"
-                      type="number"
-                      value={formAmount}
-                      onChange={(e) => setFormAmount(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="col-span-5 flex flex-col gap-1">
-                  <label className="font-caption text-caption font-bold text-on-surface">Currency</label>
-                  <select
-                    value={formCurrency}
-                    onChange={(e) => setFormCurrency(e.target.value)}
-                    className="h-[44px] px-2.5 bg-surface-container-low rounded-lg font-body text-small text-on-surface focus:outline-none focus:ring-2 focus:ring-primary shadow-xs cursor-pointer"
-                  >
-                    <option value="USD">USD ($) - Home</option>
-                    <option value={destinationCurrency}>
-                      {destinationCurrency} ({SUPPORTED_CURRENCIES[destinationCurrency]?.symbol || ''}) - Local
-                    </option>
-                    <option value="EUR">EUR (€)</option>
-                    <option value="JPY">JPY (¥)</option>
-                    <option value="GBP">GBP (£)</option>
-                    <option value="CAD">CAD (C$)</option>
-                    <option value="AUD">AUD (A$)</option>
-                    <option value="CHF">CHF</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Live Converted Preview in form */}
-              <div className="p-2 rounded-lg bg-surface-container-low flex items-center justify-between text-[11px] text-on-surface-variant">
-                <span className="flex items-center gap-1 font-medium">
-                  <span className="material-symbols-outlined text-[14px] text-primary">sync_alt</span>
-                  <span>Live Equivalent:</span>
+              <label className="font-caption text-caption font-bold text-on-surface">Amount (₱)</label>
+              <div className="relative flex items-center">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-body text-body text-on-surface-variant font-bold">
+                  ₱
                 </span>
-                <span className="font-bold text-primary">
-                  {formCurrency === 'USD'
-                    ? `≈ ${formatCurrencyAmount(
-                        (parseFloat(formAmount) || 0) * liveExchangeRate,
-                        destinationCurrency
-                      )} ${destinationCurrency}`
-                    : `≈ ${formatCurrencyAmount(
-                        (parseFloat(formAmount) || 0) / (liveExchangeRate || 1),
-                        'USD'
-                      )} USD`}
+                <input
+                  className="w-full h-[44px] pl-8 pr-20 bg-surface-container-low rounded-lg font-body text-body text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary shadow-xs"
+                  placeholder="1,500.00"
+                  required
+                  step="any"
+                  type="number"
+                  value={formAmount}
+                  onChange={(e) => setFormAmount(e.target.value)}
+                />
+                <span className="absolute right-2 px-2.5 py-1 bg-surface-container text-on-surface-variant rounded-md text-xs font-bold flex items-center gap-1 select-none pointer-events-none">
+                  <span>🇵🇭</span>
+                  <span>PHP</span>
                 </span>
               </div>
             </div>
@@ -1148,6 +1095,8 @@ export const ExpensesScreen: React.FC = () => {
           </div>
         </div>
       </div>
+      </>
+      )}
 
       {/* Floating Modal Currency Converter for Quick Access */}
       {isConverterModalOpen && (
@@ -1178,8 +1127,7 @@ export const ExpensesScreen: React.FC = () => {
                   }
                 }}
                 onApplyToExpenseDraft={(amt, curr, note) => {
-                  setFormAmount(amt.toFixed(curr === 'JPY' || curr === 'KRW' ? 0 : 2));
-                  setFormCurrency(curr);
+                  setFormAmount(amt.toFixed(tripCurrency === 'JPY' || tripCurrency === 'KRW' ? 0 : 2));
                   if (note) setFormNotes((prev) => (prev ? `${prev} • ${note}` : note));
                   setIsConverterModalOpen(false);
                   const el = document.getElementById('addExpensePanel');

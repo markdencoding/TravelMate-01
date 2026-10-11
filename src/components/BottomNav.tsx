@@ -1,6 +1,9 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { useTravelStore } from '../store';
-import { TabType } from '../types';
 import { BottomSheet } from './BottomSheet';
 
 interface BottomNavProps {
@@ -13,7 +16,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   onOpenQuickAction,
   onOpenMore,
 }) => {
-  const { activeTab, setActiveTab } = useTravelStore();
+  const pathname = usePathname();
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
   // Detect virtual keyboard opening (screen height resize > 150px)
@@ -32,15 +35,17 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   }, []);
 
   // Hide on auth screen or when virtual keyboard is open
-  if (activeTab === 'auth' || isKeyboardOpen) {
+  if (pathname === '/login' || isKeyboardOpen) {
     return null;
   }
 
   // 5 slots: Home, Trips, centered "+" button, Explore, More
-  const isHomeActive = activeTab === 'dashboard';
-  const isTripsActive = activeTab === 'trips';
-  const isExploreActive = activeTab === 'explore-map';
-  const isMoreActive = ['expenses', 'calendar', 'settings', 'admin', 'dossier'].includes(activeTab);
+  const isHomeActive = pathname === '/dashboard';
+  const isTripsActive = pathname?.startsWith('/trips');
+  const isExploreActive = pathname?.startsWith('/explore');
+  const isMoreActive = ['/expenses', '/calendar', '/settings', '/dossier'].some(
+    (p) => pathname?.startsWith(p)
+  );
 
   return (
     <nav
@@ -50,9 +55,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       <div className="relative w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-800 rounded-t-2xl shadow-[0_-8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_-8px_30px_rgba(0,0,0,0.4)] pb-safe">
         <div className="h-16 px-3 flex items-center justify-around relative">
           {/* Tab 1: Home */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('dashboard')}
+          <Link
+            href="/dashboard"
             className="flex-1 flex flex-col items-center justify-center py-1 transition-all group cursor-pointer"
             aria-label="Home Dashboard"
           >
@@ -83,12 +87,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             >
               Home
             </span>
-          </button>
+          </Link>
 
           {/* Tab 2: Trips */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('trips')}
+          <Link
+            href="/trips"
             className="flex-1 flex flex-col items-center justify-center py-1 transition-all group cursor-pointer"
             aria-label="My Trips"
           >
@@ -119,7 +122,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             >
               Trips
             </span>
-          </button>
+          </Link>
 
           {/* Center Slot: Raised 56px Coral "+" Action Button */}
           <div className="flex-1 flex flex-col items-center justify-center relative -mt-5">
@@ -137,9 +140,8 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           </div>
 
           {/* Tab 3: Explore */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('explore-map')}
+          <Link
+            href="/explore"
             className="flex-1 flex flex-col items-center justify-center py-1 transition-all group cursor-pointer"
             aria-label="Explore Map"
           >
@@ -170,7 +172,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             >
               Explore
             </span>
-          </button>
+          </Link>
 
           {/* Tab 4: More */}
           <button

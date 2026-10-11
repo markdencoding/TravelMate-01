@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useTravelStore } from '../store';
 import { NotificationsPopover } from './NotificationsPopover';
 
@@ -10,17 +11,12 @@ export const Header: React.FC<HeaderProps> = ({ onSearch }) => {
   const {
     unreadNotificationsCount,
     setActiveTab,
-    darkMode,
-    themePreference,
-    setThemePreference,
-    toggleDarkMode,
     isSidebarCollapsed,
     toggleSidebarCollapsed,
     currentUser,
   } = useTravelStore();
 
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const [searchVal, setSearchVal] = useState('');
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -62,88 +58,6 @@ export const Header: React.FC<HeaderProps> = ({ onSearch }) => {
 
         {/* Right Actions: Dark Mode Toggle, Notifications, Profile */}
         <div className="flex items-center gap-2 sm:gap-3">
-          {/* Theme Selector Popover & Button */}
-          <div className="relative">
-            <button
-              onClick={() => setIsThemeMenuOpen(!isThemeMenuOpen)}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700/70 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700/80 transition-all cursor-pointer shadow-2xs"
-              title={`Theme: ${themePreference === 'system' ? 'Auto (System Sync)' : darkMode ? 'Dark Mode' : 'Light Mode'}`}
-              aria-label="Theme selector"
-            >
-              <span className={`material-symbols-outlined text-[18px] ${
-                darkMode ? 'text-amber-400' : 'text-amber-600'
-              }`}>
-                {themePreference === 'system' ? 'brightness_auto' : darkMode ? 'dark_mode' : 'light_mode'}
-              </span>
-              <span className="hidden sm:inline text-xs font-semibold">
-                {themePreference === 'system' ? 'Auto' : darkMode ? 'Dark' : 'Light'}
-              </span>
-              <span className="material-symbols-outlined text-[14px] text-slate-400">
-                arrow_drop_down
-              </span>
-            </button>
-
-            {/* Theme Dropdown Menu */}
-            {isThemeMenuOpen && (
-              <>
-                <div
-                  className="fixed inset-0 z-40"
-                  onClick={() => setIsThemeMenuOpen(false)}
-                />
-                <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-1.5 z-50 flex flex-col gap-1 animate-fade-in text-xs">
-                  <div className="px-2.5 py-1 text-[10px] uppercase font-bold text-slate-400 font-mono tracking-wider">
-                    Appearance Mode
-                  </div>
-                  <button
-                    onClick={() => {
-                      setThemePreference('light');
-                      setIsThemeMenuOpen(false);
-                    }}
-                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
-                      themePreference === 'light'
-                        ? 'bg-primary/10 text-primary font-bold'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[16px] text-amber-500">light_mode</span>
-                    <span>Light (Crisp White)</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setThemePreference('dark');
-                      setIsThemeMenuOpen(false);
-                    }}
-                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
-                      themePreference === 'dark'
-                        ? 'bg-primary/10 text-primary font-bold'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[16px] text-indigo-400">dark_mode</span>
-                    <span>Dark (Night Explorer)</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setThemePreference('system');
-                      setIsThemeMenuOpen(false);
-                    }}
-                    className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition-all cursor-pointer ${
-                      themePreference === 'system'
-                        ? 'bg-primary/10 text-primary font-bold'
-                        : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
-                    }`}
-                  >
-                    <span className="material-symbols-outlined text-[16px] text-emerald-500">brightness_auto</span>
-                    <div className="flex flex-col text-left">
-                      <span>Auto (System Sync)</span>
-                      <span className="text-[10px] text-slate-400 font-normal">Matches device theme</span>
-                    </div>
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-
           {/* Notifications Trigger */}
           <button
             onClick={() => setIsNotifOpen(!isNotifOpen)}
@@ -159,25 +73,25 @@ export const Header: React.FC<HeaderProps> = ({ onSearch }) => {
           </button>
 
           {/* User Profile Lockup */}
-          <div
-            onClick={() => setActiveTab('settings')}
+          <Link
+            href="/settings"
             className="flex items-center gap-2 pl-1 cursor-pointer group"
             title="Open curator profile"
           >
             <img
-              alt={`${currentUser?.name || 'Curator'} avatar`}
+              alt={`${currentUser?.name || 'User'} avatar`}
               className="w-8 h-8 rounded-full object-cover ring-2 ring-slate-200 dark:ring-slate-700 group-hover:ring-primary transition-all"
               src={currentUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
             />
             <div className="hidden lg:flex flex-col text-left">
               <span className="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-primary transition-colors leading-tight">
-                {currentUser?.name || 'Alex Morgan'}
+                {currentUser?.name || 'Traveler'}
               </span>
               <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono leading-tight">
-                {currentUser?.role || 'Lead Curator'}
+                {currentUser?.role || 'Traveler'}
               </span>
             </div>
-          </div>
+          </Link>
         </div>
       </header>
 

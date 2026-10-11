@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { ExpenseItem, ExpenseCategory } from '../types';
+import { useTravelStore } from '../store';
+import { formatCurrency } from '@/lib/currencies';
 
 interface ExpenseDonutChartProps {
   expenses: ExpenseItem[];
@@ -13,6 +15,7 @@ interface CategoryBreakdown {
   id: ExpenseCategory;
   name: string;
   color: string;
+  darkColor?: string;
   bgPill: string;
   textPill: string;
   icon: string;
@@ -25,11 +28,12 @@ interface CategoryBreakdown {
 
 const CATEGORY_CONFIG: Record<
   string,
-  { name: string; color: string; bgPill: string; textPill: string; icon: string }
+  { name: string; color: string; darkColor?: string; bgPill: string; textPill: string; icon: string }
 > = {
   food: {
     name: 'Food & Dining',
     color: '#B4280C',
+    darkColor: '#FB7185',
     bgPill: 'bg-rose-100 dark:bg-rose-950/40',
     textPill: 'text-rose-700 dark:text-rose-300',
     icon: 'restaurant',
@@ -37,6 +41,7 @@ const CATEGORY_CONFIG: Record<
   dining: {
     name: 'Food & Dining',
     color: '#B4280C',
+    darkColor: '#FB7185',
     bgPill: 'bg-rose-100 dark:bg-rose-950/40',
     textPill: 'text-rose-700 dark:text-rose-300',
     icon: 'restaurant',
@@ -95,6 +100,7 @@ export const ExpenseDonutChart: React.FC<ExpenseDonutChartProps> = ({
   currency = 'USD',
   targetBudget,
 }) => {
+  const { darkMode } = useTravelStore();
   const [hoveredCategory, setHoveredCategory] = useState<ExpenseCategory | null>(null);
 
   const currSymbol = useMemo(() => {
@@ -162,6 +168,7 @@ export const ExpenseDonutChart: React.FC<ExpenseDonutChartProps> = ({
         id: catKey,
         name: cfg.name,
         color: cfg.color,
+        darkColor: cfg.darkColor,
         bgPill: cfg.bgPill,
         textPill: cfg.textPill,
         icon: cfg.icon,
@@ -283,7 +290,7 @@ export const ExpenseDonutChart: React.FC<ExpenseDonutChartProps> = ({
                     onClick={() => handleCategoryClick(cat.id)}
                   >
                     <title>
-                      {cat.name}: {currSymbol}{cat.amount.toFixed(2)} ({cat.percentage.toFixed(1)}%)
+                      {cat.name}: {formatCurrency(cat.amount)} ({cat.percentage.toFixed(1)}%)
                     </title>
                   </circle>
                 );
@@ -302,9 +309,14 @@ export const ExpenseDonutChart: React.FC<ExpenseDonutChartProps> = ({
                 </span>
                 <span
                   className="font-page-title text-base sm:text-lg font-black tracking-tight"
-                  style={{ color: activeInspection.color }}
+                  style={{
+                    color:
+                      darkMode && activeInspection.darkColor
+                        ? activeInspection.darkColor
+                        : activeInspection.color,
+                  }}
                 >
-                  {currSymbol}{activeInspection.amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  {formatCurrency(activeInspection.amount, { maximumFractionDigits: 0, minimumFractionDigits: 0 })}
                 </span>
                 <span
                   className={`font-badge text-[10px] font-bold px-1.5 py-0.5 rounded-full mt-0.5 ${activeInspection.bgPill} ${activeInspection.textPill}`}
@@ -318,7 +330,7 @@ export const ExpenseDonutChart: React.FC<ExpenseDonutChartProps> = ({
                   Total Tracked
                 </span>
                 <span className="font-page-title text-base sm:text-lg text-on-surface font-extrabold tracking-tight">
-                  {currSymbol}{totalAmount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                  {formatCurrency(totalAmount, { maximumFractionDigits: 0, minimumFractionDigits: 0 })}
                 </span>
                 <span className="font-badge text-[10px] text-primary font-bold mt-0.5">
                   100% RECORDED
@@ -371,7 +383,7 @@ export const ExpenseDonutChart: React.FC<ExpenseDonutChartProps> = ({
                 <div className="flex items-center gap-2.5 shrink-0">
                   <div className="text-right">
                     <span className="font-mono text-xs sm:text-sm font-bold text-on-surface block">
-                      {currSymbol}{cat.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {formatCurrency(cat.amount)}
                     </span>
                     {targetBudget && cat.amount > 0 && (
                       <span className="text-[10px] text-on-surface-variant block font-mono">

@@ -38,6 +38,8 @@ export interface Trip {
   distanceKm?: number;
   coverImage: string;
   coverImageAlt: string;
+  coverImageCredit?: string;
+  coverImageCreditUrl?: string;
   routeLabel?: string;
   routeSummary?: string;
   isBookmarked?: boolean;

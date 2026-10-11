@@ -35,12 +35,15 @@ export const QuickActionsSheet: React.FC<QuickActionsSheetProps> = ({
       return;
     }
 
-    // If active trip exists, execute directly. If not, open trip picker
+    // If active trip exists, execute directly. If not, open trip picker or prompt trip creation
     if (activeTrip) {
       onClose();
       onSelectAction(action);
-    } else {
+    } else if (trips.length > 0) {
       setShowTripPickerFor(action);
+    } else {
+      onClose();
+      onSelectAction('trip');
     }
   };
 
@@ -89,7 +92,7 @@ export const QuickActionsSheet: React.FC<QuickActionsSheetProps> = ({
                 </span>
                 {!activeTrip && (
                   <span className="text-[10px] bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-md font-semibold">
-                    Pick trip
+                    {trips.length === 0 ? 'Requires trip' : 'Pick trip'}
                   </span>
                 )}
               </div>
@@ -116,7 +119,7 @@ export const QuickActionsSheet: React.FC<QuickActionsSheetProps> = ({
                 </span>
                 {!activeTrip && (
                   <span className="text-[10px] bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 px-1.5 py-0.5 rounded-md font-semibold">
-                    Pick trip
+                    {trips.length === 0 ? 'Requires trip' : 'Pick trip'}
                   </span>
                 )}
               </div>
@@ -144,11 +147,17 @@ export const QuickActionsSheet: React.FC<QuickActionsSheetProps> = ({
               onClick={() => handleTripPickerSelect(trip.id)}
               className="flex items-center gap-3 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 transition-colors text-left cursor-pointer"
             >
-              <img
-                src={trip.coverImage}
-                alt={trip.title}
-                className="w-12 h-12 rounded-xl object-cover shrink-0"
-              />
+              {trip.coverImage ? (
+                <img
+                  src={trip.coverImage}
+                  alt={trip.title}
+                  className="w-12 h-12 rounded-xl object-cover shrink-0"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-container via-surface-container-high to-surface-container flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[20px] text-primary/60">explore</span>
+                </div>
+              )}
               <div className="flex flex-col flex-1 min-w-0">
                 <span className="font-display font-bold text-sm text-slate-900 dark:text-white truncate">
                   {trip.title}
