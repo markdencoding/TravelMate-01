@@ -240,6 +240,59 @@ export async function getDestinationsForTripAction(
 }
 
 /**
+ * Server Action: Fetch all destinations across all trips for the authenticated user.
+ */
+export async function getAllUserDestinationsAction(): Promise<{
+  success: boolean;
+  data: Array<{
+    id: string;
+    tripId: string;
+    name: string;
+    country: string;
+    latitude: number;
+    longitude: number;
+    orderIndex: number;
+  }>;
+  error?: string;
+}> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return { success: false, data: [], error: 'Not authenticated' };
+    }
+
+    const { data, error } = await supabase
+      .from('destinations')
+      .select('id, trip_id, name, country, latitude, longitude, order_index, trips!inner(user_id)')
+      .eq('trips.user_id', user.id)
+      .order('order_index', { ascending: true });
+
+    if (error) {
+      return { success: false, data: [], error: formatDatabaseError(error) };
+    }
+
+    const items = (data || []).map((row: any) => ({
+      id: row.id,
+      tripId: row.trip_id,
+      name: row.name,
+      country: row.country || '',
+      latitude: Number(row.latitude) || 0,
+      longitude: Number(row.longitude) || 0,
+      orderIndex: row.order_index ?? 0,
+    }));
+
+    return { success: true, data: items };
+  } catch (err) {
+    return { success: false, data: [], error: formatDatabaseError(err) };
+  }
+}
+
+/**
  * Server Action: Delete a trip ensuring user ownership.
  */
 export async function deleteTripAction(

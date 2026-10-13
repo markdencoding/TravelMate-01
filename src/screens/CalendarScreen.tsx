@@ -1,10 +1,25 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { useTravelStore } from '../store';
 import { ScheduledActivity, ActivityCategory } from '../types';
 import { createActivityAction, deleteActivityAction } from '@/app/actions/activities';
+import { getDestinationsForTripAction } from '@/app/actions/trips';
+import { resolveTripDestinations } from '@/lib/destinations-helper';
+import type { TripMapDestination } from '@/components/map/TripMap';
 import { formatCurrency } from '@/lib/currencies';
+
+// Dynamic client-only Leaflet TripMap
+const TripMap = dynamic(() => import('@/components/map/TripMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[460px] bg-slate-100 dark:bg-slate-800 flex flex-col items-center justify-center gap-2 text-slate-500 rounded-2xl border border-slate-200 dark:border-slate-700">
+      <span className="material-symbols-outlined text-[36px] animate-spin text-primary">progress_activity</span>
+      <span className="text-xs font-semibold">Loading interactive trip map...</span>
+    </div>
+  ),
+});
 
 export const CalendarScreen: React.FC = () => {
   const {
@@ -27,6 +42,48 @@ export const CalendarScreen: React.FC = () => {
   const [selectedDayNumber, setSelectedDayNumber] = useState<number>(1);
   const [showAddModal, setShowAddModal] = useState(false);
   const [filterCategory, setFilterCategory] = useState<string>('all');
+  const [viewTab, setViewTab] = useState<'calendar' | 'map'>('calendar');
+  const [destinations, setDestinations] = useState<TripMapDestination[]>([]);
+  const [selectedDestId, setSelectedDestId] = useState<string | null>(null);
+
+  // Sync trip destinations from database or fallback helper
+  useEffect(() => {
+    if (!activeTrip?.id) {
+      setDestinations([]);
+      return;
+    }
+
+    if (activeTrip.destinationsData && activeTrip.destinationsData.length > 0) {
+      setDestinations(resolveTripDestinations(activeTrip));
+      return;
+    }
+
+    let isMounted = true;
+    getDestinationsForTripAction(activeTrip.id).then((res) => {
+      if (!isMounted) return;
+      if (res.success && res.data && res.data.length > 0) {
+        setDestinations(
+          res.data.map((d: any, idx: number) => ({
+            id: d.id,
+            name: d.name,
+            country: d.country || activeTrip.country || '',
+            latitude: d.latitude,
+            longitude: d.longitude,
+            orderIndex: d.orderIndex ?? idx,
+            tripId: activeTrip.id,
+            tripTitle: activeTrip.title,
+            tripStatus: activeTrip.status,
+          }))
+        );
+      } else {
+        setDestinations(resolveTripDestinations(activeTrip));
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTrip?.id, activeTrip?.destinationsData, activeTrip?.destinations, activeTrip?.destinationRegion, activeTrip?.country, activeTrip?.title, activeTrip?.status]);
 
   // Form state
   const [newTitle, setNewTitle] = useState('');
@@ -344,28 +401,122 @@ export const CalendarScreen: React.FC = () => {
             {/* View Mode & Filters */}
             <div className="flex items-center gap-2">
               <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700 text-xs font-medium">
-                <span className="px-3 py-1 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 font-semibold shadow-xs">
-                  Month
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setViewTab('calendar')}
+                  className={`px-3 py-1 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    viewTab === 'calendar'
+                      ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[15px]">calendar_month</span>
+                  <span>Calendar</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewTab('map')}
+                  className={`px-3 py-1 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                    viewTab === 'map'
+                      ? 'bg-white dark:bg-slate-700 text-primary dark:text-emerald-400 shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[15px]">map</span>
+                  <span>Trip Map</span>
+                  {destinations.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-primary/10 text-primary dark:bg-emerald-950 dark:text-emerald-400 font-mono">
+                      {destinations.length}
+                    </span>
+                  )}
+                </button>
               </div>
 
-              {/* Category Filter */}
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-                className="px-2.5 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-200 focus:outline-none"
-              >
-                <option value="all">All Types</option>
-                <option value="sightseeing">Sightseeing</option>
-                <option value="food">Dining / Food</option>
-                <option value="transport">Transport</option>
-                <option value="lodging">Lodging</option>
-                <option value="culture">Culture</option>
-              </select>
+              {viewTab === 'calendar' && (
+                <select
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                  className="px-2.5 py-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-600 dark:text-slate-200 focus:outline-none"
+                >
+                  <option value="all">All Types</option>
+                  <option value="sightseeing">Sightseeing</option>
+                  <option value="food">Dining / Food</option>
+                  <option value="transport">Transport</option>
+                  <option value="lodging">Lodging</option>
+                  <option value="culture">Culture</option>
+                </select>
+              )}
             </div>
           </div>
 
-          {/* Month Grid */}
+          {viewTab === 'map' ? (
+            <div className="space-y-4 animate-fade-in">
+              <div className="h-[480px] w-full rounded-2xl overflow-hidden shadow-xs border border-slate-200/80 dark:border-slate-800">
+                <TripMap
+                  destinations={destinations}
+                  selectedDestinationId={selectedDestId}
+                  onSelectDestination={(dest) => setSelectedDestId(dest.id || dest.name)}
+                  onMapClick={() => setSelectedDestId(null)}
+                  onAddDestination={() => openEditTripModal(activeTrip)}
+                  showRouteLine={true}
+                  className="h-full w-full"
+                  emptyStateTitle="Add a destination to see the map"
+                  emptyStateDescription="Map out stops, view ordered route waypoints, and inspect local highlights for this expedition."
+                />
+              </div>
+
+              {/* Waypoints Sequence List */}
+              {destinations.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                      Trip Route Waypoints ({destinations.length} stops)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => openEditTripModal(activeTrip)}
+                      className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <span className="material-symbols-outlined text-[14px]">edit</span>
+                      <span>Edit Destinations</span>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {destinations.map((d, i) => (
+                      <div
+                        key={d.id || `stop-${i}`}
+                        onClick={() => setSelectedDestId(d.id || d.name)}
+                        className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                          selectedDestId === (d.id || d.name)
+                            ? 'bg-primary/5 border-primary shadow-xs ring-1 ring-primary/40'
+                            : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/80 hover:border-primary/50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span className="w-6 h-6 rounded-full bg-primary text-white text-[11px] font-bold font-mono flex items-center justify-center shrink-0">
+                            {String((d.orderIndex ?? i) + 1).padStart(2, '0')}
+                          </span>
+                          <div className="min-w-0">
+                            <div className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">
+                              {d.name}
+                            </div>
+                            <div className="text-[10px] text-slate-400 dark:text-slate-500">
+                              {d.country || activeTrip.country || 'Global'}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="material-symbols-outlined text-[18px] text-slate-400">
+                          pin_drop
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              {/* Month Grid */}
           <div className="overflow-hidden">
             {/* Weekday headers */}
             <div className="grid grid-cols-7 text-center border-b border-slate-100 dark:border-slate-800 pb-2">
@@ -518,6 +669,8 @@ export const CalendarScreen: React.FC = () => {
                 <span className="font-bold">Automated Pacing Insight:</span> Day {selectedDayNumber} has {activitiesForSelectedDay.length} planned activities. Consider allocating a transit buffer between stops.
               </div>
             </div>
+          )}
+            </>
           )}
         </div>
 

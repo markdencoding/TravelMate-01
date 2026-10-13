@@ -20,17 +20,27 @@ export async function getTrips(): Promise<{ data: Trip[]; error: string | null }
       return { data: [], error: 'Not authenticated' };
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('trips')
-      .select('*')
+      .select('*, destinations(*)')
       .eq('user_id', user.id)
       .order('start_date', { ascending: true });
+
+    if (error && error.message?.includes('destinations')) {
+      const fallback = await supabase
+        .from('trips')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('start_date', { ascending: true });
+      data = fallback.data as any;
+      error = fallback.error;
+    }
 
     if (error) {
       return { data: [], error: error.message };
     }
 
-    const mappedTrips = (data as DbTripRow[]).map((r) => dbTripToUiTrip(r));
+    const mappedTrips = ((data || []) as any[]).map((r) => dbTripToUiTrip(r));
     return { data: mappedTrips, error: null };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to fetch trips';
@@ -55,17 +65,27 @@ export async function getTripById(
       return { data: null, error: 'Not authenticated' };
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('trips')
-      .select('*')
+      .select('*, destinations(*)')
       .eq('id', tripId)
       .single();
+
+    if (error && error.message?.includes('destinations')) {
+      const fallback = await supabase
+        .from('trips')
+        .select('*')
+        .eq('id', tripId)
+        .single();
+      data = fallback.data as any;
+      error = fallback.error;
+    }
 
     if (error || !data) {
       return { data: null, error: error?.message || 'Trip not found' };
     }
 
-    return { data: dbTripToUiTrip(data as DbTripRow), error: null };
+    return { data: dbTripToUiTrip(data as any), error: null };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Failed to fetch trip';
     return { data: null, error: message };

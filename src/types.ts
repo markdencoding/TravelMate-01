@@ -11,6 +11,16 @@ export type TabType =
 
 export type TripStatus = 'planned' | 'ongoing' | 'completed';
 
+export interface TripDestination {
+  id?: string;
+  tripId?: string;
+  name: string;
+  country?: string;
+  latitude: number;
+  longitude: number;
+  orderIndex?: number;
+}
+
 export interface Trip {
   id: string;
   title: string;
@@ -46,6 +56,7 @@ export interface Trip {
   notes?: string;
   description?: string;
   destinations?: string[];
+  destinationsData?: TripDestination[];
   privacy?: 'collaborative' | 'private';
   collaborators?: string[];
 }

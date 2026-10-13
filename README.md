@@ -264,3 +264,48 @@ npm run start
       - Displays standardized attribution "Photo: {creator} · {license} · Wikimedia Commons" with clickable link to the Commons file description page on trip cards, dashboard hero, dossier, and cover selection preview.
     - **Optional Cover & Fallback Styling**:
       - Cover photos are completely optional. Trips without a cover default to an elegant teal-to-emerald gradient with a subtle topographical exploration watermark.
+
+11. **Trip Destinations Map, Trip Categories, & Geoapify Nearby Tourist Spots**:
+    - **Shared Client-Only Leaflet TripMap (`TripMap`)**:
+      - Dynamic client-only Leaflet rendering (`next/dynamic` with `ssr: false`).
+      - OpenStreetMap tiles with automated theme-aware dark mode tile filter.
+      - Numbered waypoint pins derived from `order_index`.
+      - Dashed geodesic route polyline connecting destinations in chronological sequence.
+      - Name tooltips, touch support, and interactive popups with "Open Trip" navigation.
+      - Auto-bounds fitting for all active coordinates (destinations, search places, and nearby spots).
+      - Graceful empty state when an expedition has no destinations: "Add a destination to see the map".
+    - **Trip Detail & Multi-Trip List Map View**:
+      - Trip detail (`/trips/[tripId]` / Calendar view) features an interactive map tab plotting all waypoints.
+      - Trips screen (`/trips`) features a List / Grid / Map toggle with ONE consolidated map rendering all trips' pins colored by status (teal for Planned, sunset coral for Ongoing, slate for Completed).
+    - **Explore / Map Trip Categories & Selection**:
+      - Status filter chips matching the Trips page: `All Trips`, `Planned`, `Ongoing`, `Completed` derived via `calculateTripStatus`.
+      - Expedition picker pills allow selecting any trip within the active category to display its route and inspect tourist spots.
+      - Seamless coexistence: Search places (Nominatim) and trip waypoints/spots coexist cleanly on the map and in the left inspector without discarding state unexpectedly.
+    - **Nearby Tourist Spots Endpoint (`/api/places/nearby`)**:
+      - **Endpoint**: `GET /api/places/nearby?lat={lat}&lon={lon}&radius={meters}&tripId={tripId}`
+      - **Authentication**: Signed-in only (enforced via Supabase server session).
+      - **Validation**: Zod schema validating coordinate bounds (-90 to 90 lat, -180 to 180 lon), radius (1,000m to 50,000m, default 10,000m), and optional trip ID.
+      - **Geoapify Places API v2**:
+        - Categories queried: `tourism.attraction`, `tourism.sights`, `entertainment.museum`, `leisure.park`, `heritage`.
+        - Filter: `circle:lon,lat,radiusMeters`.
+        - Bias: `proximity:lon,lat`.
+        - Result limit: 20 places.
+      - **Post-Processing & Filtering**:
+        - Drops unnamed features.
+        - Deduplicates results by normalized name and coordinate proximity.
+        - Excludes places matching existing destination names or coordinates of the selected trip.
+        - Returns `{ id, name, categoryLabel, category, address, distanceMeters, latitude, longitude }`.
+      - **Credit Usage & Caching**:
+        - Upstream cost: 1 Geoapify credit per request.
+        - Server caching: 24-hour in-memory cache keyed by rounded coordinates (~100m grid) and radius, drastically reducing quota usage.
+        - Rate limiting: 10 requests per 10-second window per user.
+      - **Graceful Error Handling**:
+        - If `GEOAPIFY_API_KEY` is missing or quota is exhausted, returns typed errors (`key_missing`, `quota_exceeded`) and the UI hides the section quietly.
+      - **UI Panel & Itinerary Integration**:
+        - Displays nearby attractions grouped by destination waypoint (with tabs/chips).
+        - Cards display name, category chip, address, and distance (e.g. `2.4 km away`).
+        - Clicking a card highlights its pin on the map and auto-pans.
+        - "+ Add to itinerary" button opens the prefilled `AddActivityModal` with place name, address, category, and date range.
+      - **Attribution**:
+        - Displays "Powered by Geoapify" and "OpenStreetMap contributors" credit notes.
+

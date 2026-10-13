@@ -1,15 +1,32 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import { useTravelStore } from '../store';
-import { Trip, TripStatus } from '../types';
+import { Trip, TripStatus, TripDestination } from '../types';
 import { formatCurrency } from '@/lib/currencies';
+import { getAllUserDestinationsAction } from '@/app/actions/trips';
+import { resolveTripDestinations } from '@/lib/destinations-helper';
+import type { TripMapDestination } from '@/components/map/TripMap';
+
+// Dynamic client-only Leaflet TripMap
+const TripMap = dynamic(() => import('@/components/map/TripMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-[540px] bg-surface-container flex flex-col items-center justify-center gap-2 text-on-surface-variant rounded-2xl border border-surface-container-high/60">
+      <span className="material-symbols-outlined text-[36px] animate-spin text-primary">progress_activity</span>
+      <span className="text-xs font-semibold">Loading all expeditions map...</span>
+    </div>
+  ),
+});
 
 interface TripsScreenProps {
   initialTrips?: Trip[];
 }
 
 export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
+  const router = useRouter();
   const {
     trips,
     setTrips,
@@ -28,7 +45,34 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | TripStatus>('all');
   const [sortBy, setSortBy] = useState('departure-soonest');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'map'>('grid');
+  const [selectedMapTripId, setSelectedMapTripId] = useState<string | null>(null);
+
+  // Sync destinations across user's trips from database
+  useEffect(() => {
+    let isMounted = true;
+    getAllUserDestinationsAction().then((res) => {
+      if (!isMounted || !res.success || !res.data || res.data.length === 0) return;
+      const grouped: Record<string, TripDestination[]> = {};
+      res.data.forEach((d) => {
+        if (!grouped[d.tripId]) grouped[d.tripId] = [];
+        grouped[d.tripId].push(d);
+      });
+
+      setTrips(
+        trips.map((t) => {
+          if (grouped[t.id] && (!t.destinationsData || t.destinationsData.length === 0)) {
+            return { ...t, destinationsData: grouped[t.id] };
+          }
+          return t;
+        })
+      );
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [trips, setTrips]);
 
   // Filter & sort logic
   const filteredTrips = useMemo(() => {
@@ -60,6 +104,15 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
 
     return result;
   }, [trips, statusFilter, searchQuery, sortBy]);
+
+  const allFilteredDestinations = useMemo(() => {
+    const list: TripMapDestination[] = [];
+    filteredTrips.forEach((t) => {
+      const tripDests = resolveTripDestinations(t);
+      list.push(...tripDests);
+    });
+    return list;
+  }, [filteredTrips]);
 
   const plannedCount = trips.filter((t) => t.status === 'planned').length;
   const ongoingCount = trips.filter((t) => t.status === 'ongoing').length;
@@ -272,6 +325,18 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
               >
                 <span className="material-symbols-outlined text-[20px]">view_agenda</span>
               </button>
+              <button
+                onClick={() => setViewMode('map')}
+                className={`p-1.5 rounded-md flex items-center justify-center transition-all cursor-pointer ${
+                  viewMode === 'map'
+                    ? 'bg-surface-container-lowest text-primary shadow-sm'
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+                title="Map View"
+                type="button"
+              >
+                <span className="material-symbols-outlined text-[20px]">map</span>
+              </button>
             </div>
           </div>
         </div>
@@ -342,7 +407,7 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
         </div>
       </div>
 
-      {/* Trips Grid / List View */}
+      {/* Trips Grid / List / Map View */}
       {filteredTrips.length === 0 ? (
         <div className="bg-surface-container-lowest p-space-xl rounded-xl flex flex-col items-center justify-center text-center shadow-sm border border-surface-container-high/40 py-16 animate-fade-in">
           <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant mb-space-sm">
@@ -374,6 +439,112 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
               <span className="material-symbols-outlined text-[18px]">add</span>
               <span>+ Create First Trip</span>
             </button>
+          </div>
+        </div>
+      ) : viewMode === 'map' ? (
+        <div className="space-y-4 animate-fade-in">
+          {/* Map Status Header & Legend */}
+          <div className="bg-surface-container-lowest p-4 rounded-xl shadow-xs border border-surface-container-high/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary text-[22px]">pin_drop</span>
+              <span className="font-item-title text-item-title text-on-surface font-bold">
+                Expedition Waypoints Map
+              </span>
+              <span className="px-2 py-0.5 rounded-full text-xs bg-surface-container text-on-surface-variant font-mono">
+                {allFilteredDestinations.length} pins across {filteredTrips.length} trips
+              </span>
+            </div>
+
+            {/* Status Color Legend */}
+            <div className="flex items-center gap-3 text-xs font-semibold text-on-surface-variant">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-primary" />
+                <span>Planned</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-secondary" />
+                <span>Ongoing</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-slate-600" />
+                <span>Completed</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Single Map showing all trips pins */}
+          <div className="h-[580px] w-full rounded-2xl overflow-hidden shadow-sm border border-surface-container-high/60">
+            <TripMap
+              destinations={allFilteredDestinations}
+              selectedDestinationId={selectedMapTripId}
+              onSelectTrip={(tripId) => {
+                setActiveTripId(tripId);
+                router.push(`/trips/${tripId}`);
+              }}
+              onAddDestination={() => openEditTripModal()}
+              showRouteLine={false}
+              className="h-full w-full"
+              emptyStateTitle="No destination pins for current filters"
+              emptyStateDescription="Try adjusting status filters or adding waypoints to your expeditions."
+            />
+          </div>
+
+          {/* Quick Trip Strip below the map */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2">
+            {filteredTrips.map((trip) => {
+              const tripDests = resolveTripDestinations(trip);
+              const isSelected = selectedMapTripId === trip.id;
+              return (
+                <div
+                  key={trip.id}
+                  onClick={() => setSelectedMapTripId(trip.id)}
+                  className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                    isSelected
+                      ? 'bg-primary/5 border-primary shadow-xs ring-1 ring-primary/40'
+                      : 'bg-surface-container-lowest border-surface-container-high/40 hover:border-primary/40 shadow-xs'
+                  }`}
+                >
+                  <div className="min-w-0 flex-1 pr-2">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          trip.status === 'ongoing'
+                            ? 'bg-secondary'
+                            : trip.status === 'completed'
+                            ? 'bg-slate-600'
+                            : 'bg-primary'
+                        }`}
+                      />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant font-mono">
+                        {trip.status}
+                      </span>
+                      <span className="text-outline-variant">•</span>
+                      <span className="text-[11px] text-on-surface-variant">
+                        {tripDests.length} waypoints
+                      </span>
+                    </div>
+                    <h4 className="font-item-title text-sm text-on-surface font-bold truncate">
+                      {trip.title}
+                    </h4>
+                    <p className="text-[11px] text-on-surface-variant truncate mt-0.5">
+                      {trip.country} • {trip.destinationRegion}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveTripId(trip.id);
+                      router.push(`/trips/${trip.id}`);
+                    }}
+                    className="h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-button text-xs font-semibold flex items-center gap-1 cursor-pointer shrink-0 transition-colors"
+                  >
+                    <span>Open</span>
+                    <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       ) : (
@@ -570,6 +741,17 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
                   type="button"
                 >
                   <span>Overview</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedMapTripId(trip.id);
+                    setViewMode('map');
+                  }}
+                  className="h-[40px] px-2.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-button text-caption flex items-center justify-center transition-colors cursor-pointer"
+                  title="Show trip on Map"
+                  type="button"
+                >
+                  <span className="material-symbols-outlined text-[18px]">map</span>
                 </button>
               </div>
             </div>

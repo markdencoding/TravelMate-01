@@ -15,6 +15,29 @@ export function dbTripToUiTrip(row: DbTripRow, isBookmarked = false): Trip {
   const budgetNum = Number(row.budget_amount ?? row.budget) || 0;
   const computedStatus = calculateTripStatus(row.start_date, row.end_date);
 
+  const rawDestinations = (row as any).destinations;
+  const destinationsData = Array.isArray(rawDestinations)
+    ? rawDestinations
+        .filter((d: any) => typeof d === 'object' && d !== null && d.name)
+        .sort((a: any, b: any) => (a.order_index ?? 0) - (b.order_index ?? 0))
+        .map((d: any) => ({
+          id: d.id,
+          tripId: d.trip_id || row.id,
+          name: d.name,
+          country: d.country || row.country || '',
+          latitude: Number(d.latitude) || 0,
+          longitude: Number(d.longitude) || 0,
+          orderIndex: d.order_index ?? 0,
+        }))
+    : undefined;
+
+  const destinationsList =
+    destinationsData && destinationsData.length > 0
+      ? destinationsData.map((d) => d.name)
+      : row.destination_region
+      ? row.destination_region.split(' & ').map((s) => s.trim()).filter(Boolean)
+      : [];
+
   return {
     id: row.id,
     title: row.title,
@@ -32,7 +55,8 @@ export function dbTripToUiTrip(row: DbTripRow, isBookmarked = false): Trip {
     currency: 'PHP',
     actualSpent: 0,
     reconciled: false,
-    destinations: row.destination_region ? row.destination_region.split(' & ').map((s) => s.trim()).filter(Boolean) : [],
+    destinations: destinationsList,
+    destinationsData,
     activitiesCount: 0,
     accommodationsCount: 0,
     coverImage: row.cover_image || '',
