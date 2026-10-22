@@ -32,6 +32,7 @@ export async function updateSession(request: NextRequest) {
   const publicPaths = [
     '/',
     '/login',
+    '/manifest.json',
     '/auth/callback',
     '/reset-password',
     '/unconfigured',

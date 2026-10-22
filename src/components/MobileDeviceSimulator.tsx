@@ -24,11 +24,19 @@ export const MobileDeviceSimulator: React.FC = () => {
   const [isLandscape, setIsLandscape] = useState(false);
   const [zoomScale, setZoomScale] = useState<number>(0.85);
   const [iframeUrl, setIframeUrl] = useState<string>('');
+  const [isIframeLoading, setIsIframeLoading] = useState(true);
+  const [isInsideIframe, setIsInsideIframe] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // Prevent recursive simulator mounting inside the iframe preview
+  useEffect(() => {
+    setIsInsideIframe(typeof window !== 'undefined' && window.self !== window.top);
+  }, []);
 
   // Sync current path into iframe when opened
   useEffect(() => {
     if (isOpen) {
+      setIsIframeLoading(true);
       setIframeUrl(pathname || '/');
     }
   }, [isOpen, pathname]);
@@ -43,6 +51,10 @@ export const MobileDeviceSimulator: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
+
+  if (isInsideIframe) {
+    return null;
+  }
 
   const frameWidth = isLandscape ? selectedDevice.height : selectedDevice.width;
   const frameHeight = isLandscape ? selectedDevice.width : selectedDevice.height;
@@ -134,6 +146,7 @@ export const MobileDeviceSimulator: React.FC = () => {
               <button
                 onClick={() => {
                   if (iframeRef.current) {
+                    setIsIframeLoading(true);
                     iframeRef.current.src = iframeRef.current.src;
                   }
                 }}
@@ -148,7 +161,10 @@ export const MobileDeviceSimulator: React.FC = () => {
             <div className="flex items-center gap-2">
               <select
                 value={iframeUrl}
-                onChange={(e) => setIframeUrl(e.target.value)}
+                onChange={(e) => {
+                  setIsIframeLoading(true);
+                  setIframeUrl(e.target.value);
+                }}
                 aria-label="Quick Screen Navigation"
                 className="bg-slate-800 text-slate-200 border border-slate-700 text-[11px] px-2.5 py-1.5 rounded-xl font-medium cursor-pointer focus:outline-hidden"
               >
@@ -215,11 +231,20 @@ export const MobileDeviceSimulator: React.FC = () => {
                 </div>
               )}
 
+              {/* Loading Indicator */}
+              {isIframeLoading && (
+                <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-surface text-on-surface gap-3">
+                  <div className="w-8 h-8 rounded-full border-2 border-teal-500 border-t-transparent animate-spin" />
+                  <span className="text-xs font-mono text-slate-400">Loading Mobile View...</span>
+                </div>
+              )}
+
               {/* Live Embedded IFrame */}
               <iframe
                 ref={iframeRef}
                 src={iframeUrl}
                 title="Mobile View Preview"
+                onLoad={() => setIsIframeLoading(false)}
                 className="w-full h-full border-0 bg-surface text-on-surface"
                 style={{
                   width: `${frameWidth}px`,
