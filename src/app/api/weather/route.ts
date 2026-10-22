@@ -60,35 +60,14 @@ const WEATHER_CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
 const weatherCache = new Map<string, CachedWeather>();
 
 export async function GET(request: NextRequest) {
-  // 1. Verify user authentication (strictly enforced in production)
-  try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if ((authError || !user) && process.env.NODE_ENV === 'production') {
-      return NextResponse.json(
-        { error: 'Authentication required to view weather' },
-        { status: 401 }
-      );
-    }
-  } catch {
-    if (process.env.NODE_ENV === 'production') {
-      return NextResponse.json(
-        { error: 'Failed to verify session' },
-        { status: 401 }
-      );
-    }
-  }
-
-
-  // 2. Validate coordinates
+  // 1. Validate coordinates (supports lat/latitude and lon/longitude)
   const searchParams = request.nextUrl.searchParams;
+  const latParam = searchParams.get('lat') || searchParams.get('latitude');
+  const lonParam = searchParams.get('lon') || searchParams.get('longitude');
+
   const parsed = weatherQuerySchema.safeParse({
-    lat: searchParams.get('lat'),
-    lon: searchParams.get('lon'),
+    lat: latParam,
+    lon: lonParam,
   });
 
   if (!parsed.success) {

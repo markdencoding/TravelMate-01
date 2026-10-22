@@ -2,12 +2,13 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useTravelStore } from '../store';
 import { createClient } from '@/lib/supabase/client';
 import { signInSchema, signUpSchema } from '@/lib/validators/auth';
 import type { TripMapDestination, TripMapExtraSpot } from '@/components/map/TripMap';
+import { CurrencyConverter } from '@/components/CurrencyConverter';
 
 const TripMap = dynamic(
   () => import('@/components/map/TripMap').then((mod) => mod.TripMap),
@@ -16,7 +17,7 @@ const TripMap = dynamic(
     loading: () => (
       <div className="w-full h-full min-h-[380px] bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse flex flex-col items-center justify-center gap-2 text-slate-400">
         <span className="material-symbols-outlined text-3xl animate-spin">refresh</span>
-        <span className="text-xs font-mono">Loading Map...</span>
+        <span className="text-xs font-mono">Loading Interactive Map...</span>
       </div>
     ),
   }
@@ -29,6 +30,8 @@ interface SampleDestination {
   country: string;
   latitude: number;
   longitude: number;
+  currency: string;
+  clothingTip: string;
   description: string;
   spots: TripMapExtraSpot[];
 }
@@ -39,9 +42,11 @@ const SAMPLE_DESTINATIONS: SampleDestination[] = [
     name: 'El Nido, Palawan',
     region: 'MIMAROPA',
     country: 'Philippines',
+    currency: 'PHP',
     latitude: 11.1949,
     longitude: 119.4013,
-    description: 'Limestone karst cliffs, hidden lagoons, and clear waters in Bacuit Bay.',
+    clothingTip: 'Light breathable linen, water sandals, dry bag, and high-SPF reef-safe sunscreen for island boat tours.',
+    description: 'Limestone karst cliffs, hidden lagoons, and crystal waters in Bacuit Bay.',
     spots: [
       { id: 'spot-1', name: 'Big Lagoon', categoryLabel: 'Nature / Lagoon', latitude: 11.1528, longitude: 119.3175, distanceMeters: 4200 },
       { id: 'spot-2', name: 'Nacpan Beach', categoryLabel: 'Beach', latitude: 11.3197, longitude: 119.4244, distanceMeters: 14000 },
@@ -53,8 +58,10 @@ const SAMPLE_DESTINATIONS: SampleDestination[] = [
     name: 'Kyoto',
     region: 'Kansai',
     country: 'Japan',
+    currency: 'JPY',
     latitude: 35.0116,
     longitude: 135.7681,
+    clothingTip: 'Comfortable walking shoes for temple stairs, slip-on shoes for tatami mats, and layered jacket for cool evenings.',
     description: 'Historic temples, rock gardens, vermilion torii gates, and traditional tea houses.',
     spots: [
       { id: 'spot-k1', name: 'Fushimi Inari Taisha', categoryLabel: 'Historic Shrine', latitude: 34.9671, longitude: 135.7727, distanceMeters: 4800 },
@@ -67,9 +74,11 @@ const SAMPLE_DESTINATIONS: SampleDestination[] = [
     name: 'Batanes',
     region: 'Cagayan Valley',
     country: 'Philippines',
+    currency: 'PHP',
     latitude: 20.4485,
     longitude: 121.9708,
-    description: 'Rolling hills, traditional stone houses, and coastal views.',
+    clothingTip: 'Windbreaker jacket for seaside cliffs, sturdy trekking footwear, and camera strap for high-wind pasture vistas.',
+    description: 'Rolling hills, traditional stone houses, and breathtaking coastal cliffs.',
     spots: [
       { id: 'spot-b1', name: 'Basco Lighthouse', categoryLabel: 'Lighthouse', latitude: 20.4578, longitude: 121.9689, distanceMeters: 1200 },
       { id: 'spot-b2', name: 'Marlboro Hills', categoryLabel: 'Scenic Pasture', latitude: 20.4182, longitude: 121.9835, distanceMeters: 6200 },
@@ -81,9 +90,11 @@ const SAMPLE_DESTINATIONS: SampleDestination[] = [
     name: 'Cebu',
     region: 'Central Visayas',
     country: 'Philippines',
+    currency: 'PHP',
     latitude: 10.3157,
     longitude: 123.8854,
-    description: 'Colonial heritage, mountain viewpoints, food culture, and waterfalls.',
+    clothingTip: 'Casual summer apparel, quick-dry activewear for mountain viewpoints, and swimwear for waterfalls.',
+    description: 'Colonial heritage, highland viewpoints, rich food culture, and waterfalls.',
     spots: [
       { id: 'spot-c1', name: "Magellan's Cross", categoryLabel: 'Historical Landmark', latitude: 10.2936, longitude: 123.9019, distanceMeters: 2800 },
       { id: 'spot-c2', name: 'Temple of Leah', categoryLabel: 'Highland Monument', latitude: 10.3702, longitude: 123.8703, distanceMeters: 7400 },
@@ -92,12 +103,28 @@ const SAMPLE_DESTINATIONS: SampleDestination[] = [
   },
 ];
 
+interface DayForecastItem {
+  date: string;
+  dayName: string;
+  dayLabel: string;
+  condition: string;
+  icon: string;
+  highC: number;
+  lowC: number;
+  precipitationPercent: number;
+}
+
 export const LandingScreen: React.FC = () => {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const { setCurrentUser, darkMode, toggleDarkMode } = useTravelStore();
 
-  // Auth State
+  // Auth Modal State (open if on /login or requested via URL query)
+  const isDirectLoginRoute = pathname === '/login';
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(
+    isDirectLoginRoute || searchParams.get('auth') !== null || searchParams.get('reason') !== null
+  );
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -108,22 +135,41 @@ export const LandingScreen: React.FC = () => {
   const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Interactive Destination State
+  // Destination & Live Weather State
   const [selectedDestId, setSelectedDestId] = useState<string>('el-nido');
   const [weatherInfo, setWeatherInfo] = useState<{
-    temp: number;
+    currentTempC: number;
+    feelsLikeC: number;
     condition: string;
+    icon: string;
     humidity: number;
-    wind: number;
+    windKmh: number;
+    forecast: DayForecastItem[];
   } | null>(null);
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
 
   const activeDest = SAMPLE_DESTINATIONS.find((d) => d.id === selectedDestId) || SAMPLE_DESTINATIONS[0];
 
+  // Close modal on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isDirectLoginRoute) {
+        setIsAuthModalOpen(false);
+      }
+    };
+    if (isAuthModalOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isAuthModalOpen, isDirectLoginRoute]);
+
+  // Handle idle logout query param
   useEffect(() => {
     const reason = searchParams.get('reason');
     if (reason === 'idle') {
       setAuthErrorMessage('You have been signed out due to inactivity.');
+      setIsAuthModalOpen(true);
+      setAuthMode('signin');
     }
   }, [searchParams]);
 
@@ -192,6 +238,7 @@ export const LandingScreen: React.FC = () => {
         } catch {}
 
         setToastMessage('Signed in successfully.');
+        setIsAuthModalOpen(false);
         router.push(redirectTo);
         router.refresh();
       } catch (err: unknown) {
@@ -236,6 +283,7 @@ export const LandingScreen: React.FC = () => {
               role: 'Traveler',
             });
           }
+          setIsAuthModalOpen(false);
           router.push('/dashboard');
           router.refresh();
         } else {
@@ -252,27 +300,47 @@ export const LandingScreen: React.FC = () => {
     }
   };
 
-  // Fetch real weather for selected destination
+  // Fetch real Open-Meteo weather for selected destination
   useEffect(() => {
     let isCancelled = false;
     async function loadWeather() {
       setIsLoadingWeather(true);
       try {
-        const res = await fetch(`/api/weather?latitude=${activeDest.latitude}&longitude=${activeDest.longitude}`);
+        const res = await fetch(`/api/weather?lat=${activeDest.latitude}&lon=${activeDest.longitude}`);
         if (res.ok) {
           const data = await res.json();
-          if (!isCancelled && data.current) {
+          if (!isCancelled && data) {
             setWeatherInfo({
-              temp: Math.round(data.current.temperature_2m ?? 28),
-              condition: data.current.weather_description || 'Sunny',
-              humidity: Math.round(data.current.relative_humidity_2m ?? 75),
-              wind: Math.round(data.current.wind_speed_10m ?? 12),
+              currentTempC: Math.round(data.currentTempC ?? 28),
+              feelsLikeC: Math.round(data.feelsLikeC ?? data.currentTempC ?? 28),
+              condition: data.condition || 'Sunny',
+              icon: data.icon || 'wb_sunny',
+              humidity: Math.round(data.humidity ?? 75),
+              windKmh: Math.round(data.windKmh ?? 12),
+              forecast: data.forecast || [],
             });
           }
+        } else {
+          throw new Error('Weather API returned error status');
         }
       } catch {
         if (!isCancelled) {
-          setWeatherInfo({ temp: 28, condition: 'Partly Cloudy', humidity: 76, wind: 14 });
+          // Reliable regional default fallback
+          setWeatherInfo({
+            currentTempC: activeDest.country === 'Japan' ? 18 : 29,
+            feelsLikeC: activeDest.country === 'Japan' ? 17 : 32,
+            condition: activeDest.country === 'Japan' ? 'Clear Skies' : 'Tropical Fair',
+            icon: 'wb_sunny',
+            humidity: activeDest.country === 'Japan' ? 58 : 78,
+            windKmh: 14,
+            forecast: [
+              { date: 'Day 1', dayName: 'Today', dayLabel: 'Day 1', condition: 'Sunny', icon: 'wb_sunny', highC: activeDest.country === 'Japan' ? 20 : 31, lowC: activeDest.country === 'Japan' ? 12 : 24, precipitationPercent: 10 },
+              { date: 'Day 2', dayName: 'Tomorrow', dayLabel: 'Day 2', condition: 'Partly Cloudy', icon: 'partly_cloudy_day', highC: activeDest.country === 'Japan' ? 19 : 30, lowC: activeDest.country === 'Japan' ? 11 : 25, precipitationPercent: 20 },
+              { date: 'Day 3', dayName: 'Day 3', dayLabel: 'Day 3', condition: 'Fair', icon: 'wb_sunny', highC: activeDest.country === 'Japan' ? 21 : 31, lowC: activeDest.country === 'Japan' ? 13 : 24, precipitationPercent: 15 },
+              { date: 'Day 4', dayName: 'Day 4', dayLabel: 'Day 4', condition: 'Scattered Clouds', icon: 'cloud', highC: activeDest.country === 'Japan' ? 18 : 29, lowC: activeDest.country === 'Japan' ? 10 : 24, precipitationPercent: 30 },
+              { date: 'Day 5', dayName: 'Day 5', dayLabel: 'Day 5', condition: 'Clear', icon: 'wb_sunny', highC: activeDest.country === 'Japan' ? 22 : 32, lowC: activeDest.country === 'Japan' ? 14 : 25, precipitationPercent: 10 },
+            ],
+          });
         }
       } finally {
         if (!isCancelled) setIsLoadingWeather(false);
@@ -283,7 +351,7 @@ export const LandingScreen: React.FC = () => {
     return () => {
       isCancelled = true;
     };
-  }, [activeDest.latitude, activeDest.longitude]);
+  }, [activeDest.latitude, activeDest.longitude, activeDest.country]);
 
   const mapDestinations: TripMapDestination[] = [
     {
@@ -313,7 +381,7 @@ export const LandingScreen: React.FC = () => {
         </div>
       )}
 
-      {/* Header */}
+      {/* Top Header Navigation */}
       <header className="sticky top-0 z-40 bg-surface/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-surface-container-high/60 dark:border-slate-800 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           {/* Brand */}
@@ -326,8 +394,21 @@ export const LandingScreen: React.FC = () => {
             </span>
           </Link>
 
-          {/* Actions & Theme */}
-          <div className="flex items-center gap-2.5">
+          {/* Nav Links & Action Buttons */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="hidden md:flex items-center gap-4 text-xs font-semibold text-on-surface-variant mr-2">
+              <a href="#interactive-map" className="hover:text-primary transition-colors">
+                Destinations &amp; Maps
+              </a>
+              <a href="#weather-section" className="hover:text-primary transition-colors">
+                Live Weather
+              </a>
+              <a href="#currency-section" className="hover:text-primary transition-colors">
+                Currency Converter
+              </a>
+            </div>
+
+            {/* Dark / Light Mode Toggle */}
             <button
               type="button"
               suppressHydrationWarning
@@ -340,42 +421,93 @@ export const LandingScreen: React.FC = () => {
               </span>
             </button>
 
-            <a
-              href="#auth-section"
-              onClick={() => setAuthMode('signin')}
-              className="px-3.5 py-2 text-xs font-bold text-on-surface hover:text-primary rounded-xl transition-colors"
+            {/* Sign In Trigger Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode('signin');
+                setAuthErrorMessage(null);
+                setIsAuthModalOpen(true);
+              }}
+              className="px-3.5 py-2 text-xs font-bold text-on-surface hover:text-primary rounded-xl transition-colors cursor-pointer"
             >
               Sign In
-            </a>
+            </button>
 
-            <a
-              href="#auth-section"
-              onClick={() => setAuthMode('signup')}
-              className="px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-container text-on-primary rounded-xl shadow-xs transition-colors"
+            {/* Create Account Trigger Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setAuthMode('signup');
+                setAuthErrorMessage(null);
+                setIsAuthModalOpen(true);
+              }}
+              className="px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-container text-on-primary rounded-xl shadow-xs transition-colors cursor-pointer"
             >
               Create Account
-            </a>
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section id="auth-section" className="relative overflow-x-clip pt-6 pb-12 sm:pt-10 sm:pb-16 md:pt-14 md:pb-20 border-b border-surface-container-high/60 dark:border-slate-800 w-full max-w-full">
+      {/* Hero Section: Clean, Uncluttered, No Embedded Auth Card */}
+      <section className="relative overflow-x-clip pt-8 pb-12 sm:pt-14 sm:pb-18 md:pt-16 md:pb-22 border-b border-surface-container-high/60 dark:border-slate-800 w-full max-w-full">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
-            {/* Left Column: Clear Value Proposition */}
-            <div className="md:col-span-6 lg:col-span-7 space-y-5 text-left">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            {/* Left Column: Clear Value Proposition & Primary Call-to-Actions */}
+            <div className="lg:col-span-7 space-y-5 text-left">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-bold">
+                <span className="material-symbols-outlined text-[15px]">verified</span>
+                <span>Curated Trip Architecture for Explorers</span>
+              </div>
+
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black font-display tracking-tight text-on-surface leading-tight">
                 Plan your trips, simply.
               </h1>
 
               <p className="text-sm sm:text-base text-on-surface-variant font-medium leading-relaxed max-w-xl">
-                Day-by-day itineraries, interactive Leaflet route maps, live weather forecasts, and expense tracking — all formatted in Philippine Pesos (₱).
+                Day-by-day itineraries, interactive Leaflet route maps, live Open-Meteo weather forecasts, and expense tracking — all formatted in Philippine Pesos (₱).
               </p>
 
-              {/* Clean Feature Highlights */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+              {/* Action Buttons: Open Auth Modal on Click */}
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signup');
+                    setAuthErrorMessage(null);
+                    setIsAuthModalOpen(true);
+                  }}
+                  className="px-5 py-3 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-bold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  <span>Start Planning Free</span>
+                  <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signin');
+                    setAuthErrorMessage(null);
+                    setIsAuthModalOpen(true);
+                  }}
+                  className="px-5 py-3 rounded-xl bg-surface-container-lowest dark:bg-slate-800 border border-surface-container-high dark:border-slate-700 text-on-surface hover:text-primary font-bold text-xs sm:text-sm transition-all cursor-pointer"
+                >
+                  <span>Sign In</span>
+                </button>
+
+                <a
+                  href="#interactive-map"
+                  className="px-3 py-3 text-xs sm:text-sm font-bold text-primary hover:underline flex items-center gap-1.5 cursor-pointer"
+                >
+                  <span>Explore Live Tools</span>
+                  <span className="material-symbols-outlined text-[18px]">arrow_downward</span>
+                </a>
+              </div>
+
+              {/* Feature Highlights Bento Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3">
                 <div className="p-3.5 rounded-2xl bg-surface-container-low/70 dark:bg-slate-900/60 border border-surface-container-high/40 dark:border-slate-800">
                   <div className="text-sm font-bold text-on-surface flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-primary text-[18px]">calendar_today</span>
@@ -387,9 +519,9 @@ export const LandingScreen: React.FC = () => {
                 <div className="p-3.5 rounded-2xl bg-surface-container-low/70 dark:bg-slate-900/60 border border-surface-container-high/40 dark:border-slate-800">
                   <div className="text-sm font-bold text-on-surface flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-primary text-[18px]">map</span>
-                    <span>Maps & Weather</span>
+                    <span>Maps &amp; Weather</span>
                   </div>
-                  <div className="text-xs text-on-surface-variant mt-1">OpenStreetMap routes and live forecasts</div>
+                  <div className="text-xs text-on-surface-variant mt-1">OpenStreetMap routes &amp; Open-Meteo radars</div>
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-surface-container-low/70 dark:bg-slate-900/60 border border-surface-container-high/40 dark:border-slate-800">
@@ -400,197 +532,95 @@ export const LandingScreen: React.FC = () => {
                   <div className="text-xs text-on-surface-variant mt-1">PHP budgeting with multi-currency rates</div>
                 </div>
               </div>
-
-              {/* Jump to Map Preview */}
-              <div className="pt-2">
-                <a
-                  href="#interactive-map"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline cursor-pointer"
-                >
-                  <span>Preview destination map</span>
-                  <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
-                </a>
-              </div>
             </div>
 
-            {/* Right Column: Sign In / Create Account Card */}
-            <div className="md:col-span-6 lg:col-span-5 w-full">
-              <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-3xl border border-surface-container-high dark:border-slate-800 shadow-xl overflow-hidden p-6 sm:p-8 transition-colors">
-                {/* Tabs */}
-                <div className="flex items-center justify-between border-b border-surface-container-high/60 dark:border-slate-800 pb-3 mb-5">
-                  <div className="flex gap-4 text-xs font-bold">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthMode('signin');
-                        setAuthErrorMessage(null);
-                      }}
-                      className={`pb-1 transition-all cursor-pointer ${
-                        authMode === 'signin'
-                          ? 'text-primary border-b-2 border-primary'
-                          : 'text-on-surface-variant hover:text-on-surface'
-                      }`}
-                    >
-                      Sign In
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setAuthMode('signup');
-                        setAuthErrorMessage(null);
-                      }}
-                      className={`pb-1 transition-all cursor-pointer ${
-                        authMode === 'signup'
-                          ? 'text-primary border-b-2 border-primary'
-                          : 'text-on-surface-variant hover:text-on-surface'
-                      }`}
-                    >
-                      Create Account
-                    </button>
+            {/* Right Column: Interactive Trip Architecture Snapshot Card */}
+            <div className="lg:col-span-5 w-full">
+              <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-3xl border border-surface-container-high dark:border-slate-800 shadow-xl overflow-hidden p-6 sm:p-7 transition-colors">
+                <div className="flex items-center justify-between pb-3 border-b border-surface-container-high/60 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-xs font-bold text-on-surface">Live Expedition Dossier</span>
                   </div>
-
-                  <span className="text-[10px] font-mono text-primary font-bold uppercase tracking-wider">
-                    {authMode === 'signin' ? 'Welcome Back' : 'Get Started'}
+                  <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">
+                    Sample Plan
                   </span>
                 </div>
 
-                <div className="mb-5">
-                  <h2 className="text-xl font-black text-on-surface font-display">
-                    {authMode === 'signin' ? 'Sign in to TravelMate' : 'Create your free account'}
-                  </h2>
-                  <p className="text-xs text-on-surface-variant mt-1">
-                    {authMode === 'signin'
-                      ? 'Access your itineraries, maps, and travel dossiers.'
-                      : 'Build your custom itineraries with real-time maps and budgets.'}
-                  </p>
-                </div>
-
-                {/* Error Banner */}
-                {authErrorMessage && (
-                  <div className="mb-4 p-3 rounded-xl bg-error/10 text-error border border-error/20 text-xs font-medium flex items-start gap-2">
-                    <span className="material-symbols-outlined text-[16px] shrink-0 mt-0.5">error</span>
-                    <span>{authErrorMessage}</span>
-                  </div>
-                )}
-
-                {/* Form */}
-                <form onSubmit={handleAuthSubmit} className="space-y-3.5">
-                  {authMode === 'signup' && (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <label className="block text-xs font-bold text-on-surface mb-1">
-                        Full Name
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Alex Morgan"
-                        className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-surface-container-high dark:border-slate-700 text-xs text-on-surface placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                      />
+                      <h3 className="text-base sm:text-lg font-black font-display text-on-surface">
+                        El Nido Bacuit Expedition
+                      </h3>
+                      <p className="text-xs text-on-surface-variant">5 Days • Palawan, Philippines</p>
                     </div>
-                  )}
-
-                  <div>
-                    <label className="block text-xs font-bold text-on-surface mb-1">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="traveler@example.com"
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-surface-container-high dark:border-slate-700 text-xs text-on-surface placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-xs font-bold text-on-surface">
-                        Password
-                      </label>
-                      {authMode === 'signin' && (
-                        <Link
-                          href="/reset-password"
-                          className="text-[11px] font-semibold text-primary hover:underline"
-                        >
-                          Forgot password?
-                        </Link>
-                      )}
-                    </div>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="••••••••"
-                        className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-surface-container-high dark:border-slate-700 text-xs text-on-surface placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">
-                          {showPassword ? 'visibility_off' : 'visibility'}
-                        </span>
-                      </button>
+                    <div className="text-right">
+                      <div className="text-xs font-mono text-slate-400">Total Budget</div>
+                      <div className="text-base font-black font-display text-primary">₱38,500</div>
                     </div>
                   </div>
 
-                  {authMode === 'signin' && (
-                    <div className="flex items-center gap-2 pt-0.5">
-                      <input
-                        type="checkbox"
-                        id="hero-remember-me"
-                        checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        className="w-4 h-4 rounded-sm border-slate-300 text-primary focus:ring-primary/20 accent-primary cursor-pointer"
-                      />
-                      <label
-                        htmlFor="hero-remember-me"
-                        className="text-xs text-on-surface-variant font-medium cursor-pointer"
-                      >
-                        Keep me signed in
-                      </label>
+                  {/* Micro Itinerary Track */}
+                  <div className="mt-4 space-y-2">
+                    <div className="p-2.5 rounded-xl bg-surface-container-low dark:bg-slate-800/80 border border-surface-container-high/60 dark:border-slate-700/60 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-md bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px]">D1</span>
+                        <span className="font-semibold text-on-surface">Lio Beach Arrival &amp; Sunset Chill</span>
+                      </div>
+                      <span className="text-[11px] font-mono text-on-surface-variant">₱1,200</span>
                     </div>
-                  )}
 
+                    <div className="p-2.5 rounded-xl bg-surface-container-low dark:bg-slate-800/80 border border-surface-container-high/60 dark:border-slate-700/60 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-md bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px]">D2</span>
+                        <span className="font-semibold text-on-surface">Big Lagoon &amp; Secret Beach Kayak</span>
+                      </div>
+                      <span className="text-[11px] font-mono text-on-surface-variant">₱3,800</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-surface-container-low dark:bg-slate-800/80 border border-surface-container-high/60 dark:border-slate-700/60 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-md bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px]">D3</span>
+                        <span className="font-semibold text-on-surface">Nacpan Twin Beach Motorbike Ride</span>
+                      </div>
+                      <span className="text-[11px] font-mono text-on-surface-variant">₱2,400</span>
+                    </div>
+                  </div>
+
+                  {/* Card Action */}
                   <button
-                    type="submit"
-                    disabled={isAuthLoading}
-                    className="w-full mt-2 py-3 px-4 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-bold text-xs shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('signup');
+                      setAuthErrorMessage(null);
+                      setIsAuthModalOpen(true);
+                    }}
+                    className="w-full mt-4 py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
-                    {isAuthLoading ? (
-                      <>
-                        <span className="material-symbols-outlined text-[16px] animate-spin">refresh</span>
-                        <span>Processing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>{authMode === 'signin' ? 'Sign In' : 'Create Free Account'}</span>
-                        <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                      </>
-                    )}
+                    <span>Create Your Custom Trip</span>
+                    <span className="material-symbols-outlined text-[16px]">add_circle</span>
                   </button>
-                </form>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Interactive Destination & Map Explorer */}
+      {/* SECTION 2: Interactive Destination & Leaflet Map Explorer */}
       <section id="interactive-map" className="py-12 md:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full max-w-full overflow-x-clip">
         <div className="text-center md:text-left mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary mb-1">
+              <span className="material-symbols-outlined text-[16px]">explore</span>
+              <span>Destination Intelligence</span>
+            </div>
             <h2 className="text-xl sm:text-2xl font-black font-display tracking-tight text-on-surface">
-              Explore Destinations
+              Explore Destinations on Leaflet
             </h2>
             <p className="text-xs sm:text-sm text-on-surface-variant mt-1">
-              Select a location to inspect maps, local attractions, and current weather.
+              Select a location to inspect interactive routes, local attractions, and current coordinates.
             </p>
           </div>
 
@@ -621,9 +651,8 @@ export const LandingScreen: React.FC = () => {
 
         {/* Interactive Map Grid */}
         <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
-          {/* Left Column: Destination Card & Live Weather */}
+          {/* Left Column: Destination Card & Key Attractions */}
           <div className="md:col-span-5 lg:col-span-4 flex flex-col gap-4">
-            {/* Destination Highlight Card */}
             <div className="p-5 rounded-3xl bg-surface-container-lowest dark:bg-slate-900 border border-surface-container-high dark:border-slate-800 shadow-sm flex flex-col justify-between">
               <div>
                 <span className="text-[11px] font-mono font-semibold text-primary">
@@ -660,36 +689,15 @@ export const LandingScreen: React.FC = () => {
               </div>
             </div>
 
-            {/* Weather Card */}
-            <div className="p-5 rounded-3xl bg-surface-container-lowest dark:bg-slate-900 border border-surface-container-high dark:border-slate-800 shadow-sm">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-primary">
-                  <span className="material-symbols-outlined text-[18px]">wb_sunny</span>
-                  <span>Current Weather</span>
-                </div>
-                {isLoadingWeather && (
-                  <span className="text-[10px] font-mono text-slate-400">Loading...</span>
-                )}
+            {/* Quick Climate Note */}
+            <div className="p-4 rounded-2xl bg-primary/5 dark:bg-primary/10 border border-primary/20 text-xs text-on-surface flex items-start gap-2.5">
+              <span className="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5">
+                checkroom
+              </span>
+              <div>
+                <span className="font-bold text-primary">Packing Note: </span>
+                <span className="text-on-surface-variant">{activeDest.clothingTip}</span>
               </div>
-
-              {weatherInfo ? (
-                <div>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-black font-display text-on-surface">
-                      {weatherInfo.temp}°C
-                    </span>
-                    <span className="text-xs font-semibold text-on-surface-variant">
-                      {weatherInfo.condition}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 mt-2 text-[11px] text-on-surface-variant">
-                    <span>Humidity: {weatherInfo.humidity}%</span>
-                    <span>Wind: {weatherInfo.wind} km/h</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-xs text-on-surface-variant py-2">Loading weather...</div>
-              )}
             </div>
           </div>
 
@@ -704,17 +712,375 @@ export const LandingScreen: React.FC = () => {
         </div>
       </section>
 
+      {/* SECTION 3: Live Weather Radar & Forecast (Brought Back!) */}
+      <section id="weather-section" className="py-12 md:py-16 bg-surface-container-low/40 dark:bg-slate-900/40 border-t border-surface-container-high/60 dark:border-slate-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center max-w-3xl mx-auto mb-8">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary mb-1">
+              <span className="material-symbols-outlined text-[16px]">thermostat</span>
+              <span>Live Meteorology</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black font-display tracking-tight text-on-surface">
+              Live Weather Radar &amp; 5-Day Outlook
+            </h2>
+            <p className="text-xs sm:text-sm text-on-surface-variant mt-2">
+              Real-time atmospheric forecasts via Open-Meteo with humidity, wind speed, precipitation probability, and clothing packing recommendations for {activeDest.name}.
+            </p>
+          </div>
+
+          {/* Weather Content Card */}
+          <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-3xl p-5 sm:p-7 border border-surface-container-high dark:border-slate-800 shadow-sm flex flex-col gap-6">
+            {/* Current Conditions Bar */}
+            <div className="bg-gradient-to-r from-surface-container-low via-surface-container to-surface-container-low dark:from-slate-800/80 dark:via-slate-800/50 dark:to-slate-800/80 rounded-2xl p-4 sm:p-5 border border-surface-container-high/40 dark:border-slate-700/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-surface-container-lowest dark:bg-slate-900 flex items-center justify-center text-primary shadow-xs shrink-0 border border-surface-container-high/30">
+                  <span className="material-symbols-outlined text-[34px]">
+                    {weatherInfo?.icon || 'wb_sunny'}
+                  </span>
+                </div>
+                <div>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl sm:text-4xl font-extrabold text-on-surface font-display tracking-tight">
+                      {weatherInfo ? `${weatherInfo.currentTempC}°C` : '28°C'}
+                    </span>
+                    <span className="text-xs font-medium text-on-surface-variant">
+                      Feels like {weatherInfo ? `${weatherInfo.feelsLikeC}°C` : '30°C'}
+                    </span>
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold text-on-surface mt-0.5 flex items-center gap-1.5">
+                    <span>{weatherInfo?.condition || 'Fair Skies'}</span>
+                    <span className="text-on-surface-variant font-normal">•</span>
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{activeDest.name}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Weather Metrics */}
+              <div className="flex items-center gap-3 sm:gap-4 flex-wrap text-xs text-on-surface-variant">
+                <div className="flex items-center gap-1.5 bg-surface-container-lowest dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-surface-container-high/40 dark:border-slate-700/60 shadow-xs">
+                  <span className="material-symbols-outlined text-primary text-[16px]">water_drop</span>
+                  <div>
+                    <span className="text-[10px] text-on-surface-variant block uppercase font-bold">Humidity</span>
+                    <span className="font-bold text-on-surface">{weatherInfo?.humidity ?? 75}%</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-surface-container-lowest dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-surface-container-high/40 dark:border-slate-700/60 shadow-xs">
+                  <span className="material-symbols-outlined text-secondary text-[16px]">air</span>
+                  <div>
+                    <span className="text-[10px] text-on-surface-variant block uppercase font-bold">Wind</span>
+                    <span className="font-bold text-on-surface">{weatherInfo?.windKmh ?? 12} km/h</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 bg-surface-container-lowest dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-surface-container-high/40 dark:border-slate-700/60 shadow-xs">
+                  <span className="material-symbols-outlined text-amber-500 text-[16px]">wb_sunny</span>
+                  <div>
+                    <span className="text-[10px] text-on-surface-variant block uppercase font-bold">UV Status</span>
+                    <span className="font-bold text-on-surface">Moderate</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* 5-Day Outlook Track */}
+            <div>
+              <div className="flex items-center justify-between text-xs font-bold text-on-surface-variant uppercase tracking-wider mb-3">
+                <span>5-Day Outlook for {activeDest.name}</span>
+                {isLoadingWeather && (
+                  <span className="text-[11px] font-mono text-primary animate-pulse">Syncing Open-Meteo...</span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                {(weatherInfo?.forecast && weatherInfo.forecast.length > 0
+                  ? weatherInfo.forecast
+                  : [
+                      { date: 'Day 1', dayName: 'Today', dayLabel: 'Day 1', condition: 'Sunny', icon: 'wb_sunny', highC: 31, lowC: 24, precipitationPercent: 10 },
+                      { date: 'Day 2', dayName: 'Tomorrow', dayLabel: 'Day 2', condition: 'Partly Cloudy', icon: 'partly_cloudy_day', highC: 30, lowC: 25, precipitationPercent: 20 },
+                      { date: 'Day 3', dayName: 'Day 3', dayLabel: 'Day 3', condition: 'Clear', icon: 'wb_sunny', highC: 31, lowC: 24, precipitationPercent: 15 },
+                      { date: 'Day 4', dayName: 'Day 4', dayLabel: 'Day 4', condition: 'Scattered Showers', icon: 'rainy', highC: 29, lowC: 24, precipitationPercent: 40 },
+                      { date: 'Day 5', dayName: 'Day 5', dayLabel: 'Day 5', condition: 'Sunny', icon: 'wb_sunny', highC: 32, lowC: 25, precipitationPercent: 10 },
+                    ]
+                ).map((day, idx) => (
+                  <div
+                    key={idx}
+                    className="rounded-2xl p-3.5 bg-surface-container-low dark:bg-slate-800/60 border border-surface-container-high/40 dark:border-slate-700/60 flex flex-col justify-between items-center text-center"
+                  >
+                    <div className="text-xs font-bold text-on-surface font-display">{day.dayLabel}</div>
+                    <div className="my-2">
+                      <span className="material-symbols-outlined text-[26px] text-primary">
+                        {day.icon}
+                      </span>
+                      <div className="text-[11px] font-medium text-on-surface line-clamp-1 mt-0.5">
+                        {day.condition}
+                      </div>
+                    </div>
+                    <div className="w-full space-y-1">
+                      <div className="flex items-baseline justify-between w-full text-xs font-bold">
+                        <span className="text-on-surface">{day.highC}°C</span>
+                        <span className="text-on-surface-variant font-normal text-[11px]">{day.lowC}°C</span>
+                      </div>
+                      <div className="flex items-center justify-center gap-1 text-[10px] text-sky-600 dark:text-sky-400 font-semibold">
+                        <span className="material-symbols-outlined text-[12px]">water_drop</span>
+                        <span>{day.precipitationPercent}%</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* SECTION 4: Live Currency & Budget Converter (Brought Back!) */}
+      <section id="currency-section" className="py-12 md:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center max-w-3xl mx-auto mb-8">
+          <div className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-primary mb-1">
+            <span className="material-symbols-outlined text-[16px]">currency_exchange</span>
+            <span>Financial Atelier</span>
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black font-display tracking-tight text-on-surface">
+            Live PHP Budget &amp; Multi-Currency Converter
+          </h2>
+          <p className="text-xs sm:text-sm text-on-surface-variant mt-2">
+            Every budget in TravelMate is calibrated to Philippine Pesos (₱, PHP) with real-time live exchange rate conversions from European Central Bank &amp; Frankfurter feeds.
+          </p>
+        </div>
+
+        {/* Embedded Full Currency Converter Component */}
+        <CurrencyConverter
+          homeCurrency="PHP"
+          destinationCurrency={activeDest.currency === 'PHP' ? 'USD' : activeDest.currency}
+          className="shadow-sm"
+        />
+      </section>
+
       {/* Footer */}
       <footer className="border-t border-surface-container-high/60 dark:border-slate-800 py-6 bg-surface dark:bg-slate-950 text-on-surface-variant text-xs mt-auto">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
           <div className="font-extrabold text-xs tracking-tight font-display text-on-surface">
-            TRAVELMATE
+            TRAVELMATE • Curated Trip Architecture
           </div>
           <div className="text-[11px] text-slate-400">
-            Weather data via Open-Meteo. Maps via OpenStreetMap.
+            Weather via Open-Meteo. Maps via OpenStreetMap. Currencies via ECB &amp; Frankfurter.
           </div>
         </div>
       </footer>
+
+      {/* MODAL DIALOG: Sign In & Create Account Popup */}
+      {isAuthModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={authMode === 'signin' ? 'Sign In to TravelMate' : 'Create Free Account'}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto"
+        >
+          {/* Backdrop Dismiss Trigger */}
+          <div
+            className="fixed inset-0"
+            onClick={() => {
+              if (!isDirectLoginRoute) setIsAuthModalOpen(false);
+            }}
+            aria-hidden="true"
+          />
+
+          {/* Modal Container Card */}
+          <div className="relative w-full max-w-md bg-surface-container-lowest dark:bg-slate-900 rounded-3xl border border-surface-container-high dark:border-slate-800 shadow-2xl p-6 sm:p-8 z-10 animate-in zoom-in-95 duration-200 my-8">
+            {/* Close Button */}
+            {!isDirectLoginRoute && (
+              <button
+                type="button"
+                onClick={() => setIsAuthModalOpen(false)}
+                className="absolute top-5 right-5 p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                title="Close modal"
+                aria-label="Close dialog"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            )}
+
+            {/* Mode Switcher Tabs */}
+            <div className="flex items-center justify-between border-b border-surface-container-high/60 dark:border-slate-800 pb-3 mb-5 pr-8">
+              <div className="flex gap-4 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signin');
+                    setAuthErrorMessage(null);
+                  }}
+                  className={`pb-1 transition-all cursor-pointer ${
+                    authMode === 'signin'
+                      ? 'text-primary border-b-2 border-primary'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('signup');
+                    setAuthErrorMessage(null);
+                  }}
+                  className={`pb-1 transition-all cursor-pointer ${
+                    authMode === 'signup'
+                      ? 'text-primary border-b-2 border-primary'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  Create Account
+                </button>
+              </div>
+
+              <span className="text-[10px] font-mono text-primary font-bold uppercase tracking-wider">
+                {authMode === 'signin' ? 'Welcome Back' : 'Get Started'}
+              </span>
+            </div>
+
+            {/* Header Title */}
+            <div className="mb-5">
+              <h2 className="text-xl font-black text-on-surface font-display">
+                {authMode === 'signin' ? 'Sign in to TravelMate' : 'Create your free account'}
+              </h2>
+              <p className="text-xs text-on-surface-variant mt-1">
+                {authMode === 'signin'
+                  ? 'Access your itineraries, maps, and travel dossiers.'
+                  : 'Build your custom itineraries with real-time maps and budgets.'}
+              </p>
+            </div>
+
+            {/* Error Banner */}
+            {authErrorMessage && (
+              <div className="mb-4 p-3 rounded-xl bg-error/10 text-error border border-error/20 text-xs font-medium flex items-start gap-2">
+                <span className="material-symbols-outlined text-[16px] shrink-0 mt-0.5">error</span>
+                <span>{authErrorMessage}</span>
+              </div>
+            )}
+
+            {/* Form */}
+            <form onSubmit={handleAuthSubmit} className="space-y-3.5">
+              {authMode === 'signup' && (
+                <div>
+                  <label className="block text-xs font-bold text-on-surface mb-1">
+                    Full Name
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="Alex Morgan"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-surface-container-high dark:border-slate-700 text-xs text-on-surface placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-on-surface mb-1">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="traveler@example.com"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-surface-container-high dark:border-slate-700 text-xs text-on-surface placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-on-surface">
+                    Password
+                  </label>
+                  {authMode === 'signin' && (
+                    <Link
+                      href="/reset-password"
+                      className="text-[11px] font-semibold text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </Link>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-surface-container-high dark:border-slate-700 text-xs text-on-surface placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">
+                      {showPassword ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {authMode === 'signin' && (
+                <div className="flex items-center gap-2 pt-0.5">
+                  <input
+                    type="checkbox"
+                    id="modal-remember-me"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 rounded-sm border-slate-300 text-primary focus:ring-primary/20 accent-primary cursor-pointer"
+                  />
+                  <label
+                    htmlFor="modal-remember-me"
+                    className="text-xs text-on-surface-variant font-medium cursor-pointer"
+                  >
+                    Keep me signed in
+                  </label>
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={isAuthLoading}
+                className="w-full mt-2 py-3 px-4 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-bold text-xs shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+              >
+                {isAuthLoading ? (
+                  <>
+                    <span className="material-symbols-outlined text-[16px] animate-spin">refresh</span>
+                    <span>Processing...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>{authMode === 'signin' ? 'Sign In' : 'Create Free Account'}</span>
+                    <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                  </>
+                )}
+              </button>
+
+              {/* Mode Switcher Link at Bottom */}
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
+                    setAuthErrorMessage(null);
+                  }}
+                  className="text-xs text-on-surface-variant hover:text-primary font-semibold transition-colors cursor-pointer"
+                >
+                  {authMode === 'signin'
+                    ? "Don't have an account? Create Free Account"
+                    : 'Already have an account? Sign In'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
