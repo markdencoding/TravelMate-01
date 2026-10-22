@@ -2,8 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useTravelStore } from '../store';
+import { createClient } from '@/lib/supabase/client';
+import { signInSchema, signUpSchema } from '@/lib/validators/auth';
 import { formatCurrency } from '@/lib/currencies';
 import type { TripMapDestination, TripMapExtraSpot } from '@/components/map/TripMap';
 
@@ -12,7 +15,7 @@ const TripMap = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="w-full h-full min-h-[380px] bg-slate-100 dark:bg-slate-850 rounded-2xl animate-pulse flex flex-col items-center justify-center gap-2 text-slate-400">
+      <div className="w-full h-full min-h-[380px] bg-slate-100 dark:bg-slate-800 rounded-2xl animate-pulse flex flex-col items-center justify-center gap-2 text-slate-400">
         <span className="material-symbols-outlined text-3xl animate-spin">refresh</span>
         <span className="text-xs font-mono">Initializing Interactive Atlas...</span>
       </div>
@@ -224,8 +227,22 @@ const SAMPLE_DESTINATIONS: SampleDestination[] = [
 ];
 
 export const LandingScreen: React.FC = () => {
-  const { darkMode, toggleDarkMode } = useTravelStore();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { setCurrentUser, darkMode, toggleDarkMode } = useTravelStore();
 
+  // Auth State
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+  const [authErrorMessage, setAuthErrorMessage] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Interactive Sandbox State
   const [selectedDestId, setSelectedDestId] = useState<string>('el-nido');
   const [selectedDay, setSelectedDay] = useState<number>(1);
   const [targetBudget, setTargetBudget] = useState<number>(45000);
@@ -239,6 +256,132 @@ export const LandingScreen: React.FC = () => {
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
 
   const activeDest = SAMPLE_DESTINATIONS.find((d) => d.id === selectedDestId) || SAMPLE_DESTINATIONS[0];
+
+  useEffect(() => {
+    const reason = searchParams.get('reason');
+    if (reason === 'idle') {
+      setAuthErrorMessage('You have been signed out due to inactivity.');
+    }
+  }, [searchParams]);
+
+  // Auth submission handler
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAuthLoading(true);
+    setAuthErrorMessage(null);
+
+    const supabase = createClient();
+    const redirectTo = searchParams.get('redirectTo') || '/dashboard';
+
+    if (authMode === 'signin') {
+      const validation = signInSchema.safeParse({ email, password });
+      if (!validation.success) {
+        setAuthErrorMessage(validation.error.errors[0]?.message || 'Please check your inputs.');
+        setIsAuthLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+
+        if (error) {
+          setAuthErrorMessage('Invalid email or password. Please try again.');
+          setIsAuthLoading(false);
+          return;
+        }
+
+        if (data?.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('display_name, avatar_url, role, is_active')
+            .eq('id', data.user.id)
+            .single();
+
+          if (profile && profile.is_active === false) {
+            await supabase.auth.signOut();
+            setAuthErrorMessage('Your account is deactivated. Please contact an administrator.');
+            setIsAuthLoading(false);
+            return;
+          }
+
+          setCurrentUser({
+            name:
+              profile?.display_name ||
+              (data.user.user_metadata?.full_name as string) ||
+              (data.user.user_metadata?.name as string) ||
+              email.trim().split('@')[0],
+            email: data.user.email || email.trim(),
+            avatar:
+              profile?.avatar_url ||
+              (data.user.user_metadata?.avatar_url as string) ||
+              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+            role: profile?.role === 'admin' ? 'Lead Curator' : 'Traveler',
+          });
+        }
+
+        setToastMessage('Authenticated successfully. Opening expedition atelier...');
+        router.push(redirectTo);
+        router.refresh();
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Authentication service error';
+        setAuthErrorMessage(msg);
+        setIsAuthLoading(false);
+      }
+    } else {
+      // Sign Up
+      const validation = signUpSchema.safeParse({ name, email, password });
+      if (!validation.success) {
+        setAuthErrorMessage(validation.error.errors[0]?.message || 'Please check your inputs.');
+        setIsAuthLoading(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+          options: {
+            data: {
+              full_name: name.trim(),
+            },
+          },
+        });
+
+        if (error) {
+          setAuthErrorMessage(error.message);
+          setIsAuthLoading(false);
+          return;
+        }
+
+        if (data.session) {
+          setToastMessage('Account created successfully. Welcome to TravelMate!');
+          if (data.user) {
+            setCurrentUser({
+              name: name.trim() || email.trim().split('@')[0],
+              email: data.user.email || email.trim(),
+              avatar:
+                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+              role: 'Traveler',
+            });
+          }
+          router.push('/dashboard');
+          router.refresh();
+        } else {
+          setToastMessage(
+            'Confirmation link sent! Please check your email to activate your account.'
+          );
+          setIsAuthLoading(false);
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Authentication service error';
+        setAuthErrorMessage(msg);
+        setIsAuthLoading(false);
+      }
+    }
+  };
 
   // Fetch real weather for selected destination
   useEffect(() => {
@@ -259,7 +402,6 @@ export const LandingScreen: React.FC = () => {
           }
         }
       } catch {
-        // Fallback default
         if (!isCancelled) {
           setWeatherInfo({ temp: 28, condition: 'Partly Cloudy', humidity: 76, wind: 14 });
         }
@@ -313,6 +455,16 @@ export const LandingScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-surface text-on-surface transition-colors selection:bg-primary-container selection:text-on-primary-container font-sans">
+      {/* Toast Alert */}
+      {toastMessage && (
+        <div className="fixed top-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 text-xs font-semibold animate-fade-in">
+          <span className="material-symbols-outlined text-emerald-400 text-[18px]">
+            check_circle
+          </span>
+          <span>{toastMessage}</span>
+        </div>
+      )}
+
       {/* Top Floating Glass Navigation */}
       <header className="sticky top-0 z-40 bg-surface/85 dark:bg-slate-900/85 backdrop-blur-md border-b border-surface-container-high/60 dark:border-slate-800 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -361,75 +513,250 @@ export const LandingScreen: React.FC = () => {
               </span>
             </button>
 
-            <Link
-              href="/login"
+            <a
+              href="#auth-section"
+              onClick={() => setAuthMode('signin')}
               className="px-3.5 py-2 text-xs font-bold text-on-surface hover:text-primary rounded-xl transition-colors"
             >
               Sign In
-            </Link>
+            </a>
 
-            <Link
-              href="/login"
+            <a
+              href="#auth-section"
+              onClick={() => setAuthMode('signup')}
               className="px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-container text-on-primary rounded-xl shadow-xs transition-colors"
             >
-              Get Started Free
-            </Link>
+              Create Account
+            </a>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden pt-12 pb-16 md:pt-20 md:pb-24 border-b border-surface-container-high/40 dark:border-slate-800/60">
+      {/* HERO SECTION WITH DUAL COLS: Left Value Prop, Right Interactive Sign In / Sign Up */}
+      <section id="auth-section" className="relative overflow-hidden pt-8 pb-16 md:pt-14 md:pb-20 border-b border-surface-container-high/60 dark:border-slate-800">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20 mb-6 animate-fade-in">
-            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-            <span>Interactive Trip Architecture • Zero Noise, Zero Ads</span>
-          </div>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            {/* Left Column: Rich Value Proposition & Interactive Highlights (7 cols) */}
+            <div className="lg:col-span-7 space-y-6 text-left">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20">
+                <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                <span>Interactive Trip Architecture • Zero Noise, Zero Ads</span>
+              </div>
 
-          <h1 className="text-3xl sm:text-5xl md:text-6xl font-black font-display tracking-tight text-on-surface max-w-4xl mx-auto leading-tight">
-            Plan with intentionality. Every temple, hidden cove, and budget line item.
-          </h1>
+              <h1 className="text-3xl sm:text-5xl font-black font-display tracking-tight text-on-surface leading-tight">
+                Plan with intentionality. Every temple, winding alley, and budget line item.
+              </h1>
 
-          <p className="mt-5 text-sm sm:text-base md:text-lg text-on-surface-variant max-w-2xl mx-auto font-medium leading-relaxed">
-            TravelMate unifies visual day-by-day itineraries, interactive Leaflet route maps, live Open-Meteo weather forecasts, and Philippine Peso expense tracking into one elegant atelier.
-          </p>
+              <p className="text-sm sm:text-base text-on-surface-variant font-medium leading-relaxed max-w-xl">
+                TravelMate unifies visual day-by-day itineraries, interactive Leaflet route maps, live Open-Meteo weather forecasts, and Philippine Peso expense tracking into one unified atelier.
+              </p>
 
-          <div className="mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-4">
-            <Link
-              href="/login"
-              className="px-6 py-3.5 rounded-2xl bg-primary hover:bg-primary-container text-on-primary font-bold text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-2"
-            >
-              <span>Start Planning Your Trip</span>
-              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-            </Link>
-            <a
-              href="#interactive-map"
-              className="px-6 py-3.5 rounded-2xl bg-surface-container-lowest dark:bg-slate-800 text-on-surface hover:text-primary font-bold text-sm border border-surface-container-high dark:border-slate-700 shadow-xs hover:border-primary/40 transition-all flex items-center gap-2"
-            >
-              <span className="material-symbols-outlined text-[18px]">travel_explore</span>
-              <span>Test Interactive Demo</span>
-            </a>
-          </div>
+              {/* Quick Feature Badges */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+                <div className="p-3 rounded-2xl bg-surface-container-low/70 dark:bg-slate-900/60 border border-surface-container-high/40 dark:border-slate-800">
+                  <div className="text-base font-bold text-on-surface flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-primary text-[18px]">map</span>
+                    <span>Leaflet Maps</span>
+                  </div>
+                  <div className="text-[11px] text-on-surface-variant font-medium mt-0.5">Route polylines & POIs</div>
+                </div>
 
-          {/* Quick Metrics Bar */}
-          <div className="mt-12 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto pt-8 border-t border-surface-container-high/60 dark:border-slate-800">
-            <div className="p-3 rounded-2xl bg-surface-container-low/70 dark:bg-slate-900/60">
-              <div className="text-2xl font-black font-display text-primary">₱0</div>
-              <div className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider">Free to Plan</div>
+                <div className="p-3 rounded-2xl bg-surface-container-low/70 dark:bg-slate-900/60 border border-surface-container-high/40 dark:border-slate-800">
+                  <div className="text-base font-bold text-on-surface flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-primary text-[18px]">wb_sunny</span>
+                    <span>Live Weather</span>
+                  </div>
+                  <div className="text-[11px] text-on-surface-variant font-medium mt-0.5">Real-time Open-Meteo</div>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-surface-container-low/70 dark:bg-slate-900/60 border border-surface-container-high/40 dark:border-slate-800 col-span-2 sm:col-span-1">
+                  <div className="text-base font-bold text-on-surface flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-primary text-[18px]">payments</span>
+                    <span>PHP (₱) Base</span>
+                  </div>
+                  <div className="text-[11px] text-on-surface-variant font-medium mt-0.5">Live ECB conversion</div>
+                </div>
+              </div>
+
+              {/* Jump to Sandbox CTA */}
+              <div className="pt-2 flex items-center gap-4">
+                <a
+                  href="#interactive-map"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-bold text-xs border border-surface-container-high dark:border-slate-700 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[18px] text-primary">travel_explore</span>
+                  <span>Explore Live Interactive Preview Below</span>
+                  <span className="material-symbols-outlined text-[16px]">arrow_downward</span>
+                </a>
+              </div>
             </div>
-            <div className="p-3 rounded-2xl bg-surface-container-low/70 dark:bg-slate-900/60">
-              <div className="text-2xl font-black font-display text-primary">100%</div>
-              <div className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider">Ad-Free Workspace</div>
-            </div>
-            <div className="p-3 rounded-2xl bg-surface-container-low/70 dark:bg-slate-900/60">
-              <div className="text-2xl font-black font-display text-primary">Live</div>
-              <div className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider">Weather & Exchange</div>
-            </div>
-            <div className="p-3 rounded-2xl bg-surface-container-low/70 dark:bg-slate-900/60">
-              <div className="text-2xl font-black font-display text-primary">PHP (₱)</div>
-              <div className="text-[11px] font-semibold text-on-surface-variant uppercase tracking-wider">Native Base Currency</div>
+
+            {/* Right Column: Embedded Interactive Sign In / Create Account Card (5 cols) */}
+            <div className="lg:col-span-5">
+              <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-3xl border border-surface-container-high dark:border-slate-800 shadow-xl overflow-hidden p-6 sm:p-8 transition-colors">
+                {/* Tabs */}
+                <div className="flex items-center justify-between border-b border-surface-container-high/60 dark:border-slate-800 pb-3 mb-5">
+                  <div className="flex gap-4 text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('signin');
+                        setAuthErrorMessage(null);
+                      }}
+                      className={`pb-1 transition-all cursor-pointer ${
+                        authMode === 'signin'
+                          ? 'text-primary border-b-2 border-primary'
+                          : 'text-on-surface-variant hover:text-on-surface'
+                      }`}
+                    >
+                      Sign In
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('signup');
+                        setAuthErrorMessage(null);
+                      }}
+                      className={`pb-1 transition-all cursor-pointer ${
+                        authMode === 'signup'
+                          ? 'text-primary border-b-2 border-primary'
+                          : 'text-on-surface-variant hover:text-on-surface'
+                      }`}
+                    >
+                      Create Account
+                    </button>
+                  </div>
+
+                  <span className="text-[10px] font-mono text-primary font-bold uppercase tracking-wider">
+                    {authMode === 'signin' ? 'Welcome Back' : 'Get Started'}
+                  </span>
+                </div>
+
+                <div className="mb-5">
+                  <h2 className="text-xl font-black text-on-surface font-display">
+                    {authMode === 'signin' ? 'Sign in to TravelMate' : 'Create your free account'}
+                  </h2>
+                  <p className="text-xs text-on-surface-variant mt-1">
+                    {authMode === 'signin'
+                      ? 'Access your unified itineraries, maps, and travel dossiers.'
+                      : 'Build your custom itineraries with real-time maps and budgets.'}
+                  </p>
+                </div>
+
+                {/* Error Banner */}
+                {authErrorMessage && (
+                  <div className="mb-4 p-3 rounded-xl bg-error/10 text-error border border-error/20 text-xs font-medium flex items-start gap-2">
+                    <span className="material-symbols-outlined text-[16px] shrink-0 mt-0.5">error</span>
+                    <span>{authErrorMessage}</span>
+                  </div>
+                )}
+
+                {/* Form */}
+                <form onSubmit={handleAuthSubmit} className="space-y-3.5">
+                  {authMode === 'signup' && (
+                    <div>
+                      <label className="block text-xs font-bold text-on-surface mb-1">
+                        Full Name
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Alex Morgan"
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-surface-container-high dark:border-slate-700 text-xs text-on-surface placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-bold text-on-surface mb-1">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="traveler@example.com"
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-surface-container-high dark:border-slate-700 text-xs text-on-surface placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-xs font-bold text-on-surface">
+                        Password
+                      </label>
+                      {authMode === 'signin' && (
+                        <Link
+                          href="/reset-password"
+                          className="text-[11px] font-semibold text-primary hover:underline"
+                        >
+                          Forgot password?
+                        </Link>
+                      )}
+                    </div>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-3.5 py-2.5 pr-10 rounded-xl bg-surface-container-low dark:bg-slate-800 border border-surface-container-high dark:border-slate-700 text-xs text-on-surface placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">
+                          {showPassword ? 'visibility_off' : 'visibility'}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {authMode === 'signin' && (
+                    <div className="flex items-center gap-2 pt-0.5">
+                      <input
+                        type="checkbox"
+                        id="hero-remember-me"
+                        checked={rememberMe}
+                        onChange={(e) => setRememberMe(e.target.checked)}
+                        className="w-4 h-4 rounded-sm border-slate-300 text-primary focus:ring-primary/20 accent-primary cursor-pointer"
+                      />
+                      <label
+                        htmlFor="hero-remember-me"
+                        className="text-xs text-on-surface-variant font-medium cursor-pointer"
+                      >
+                        Keep me signed in
+                      </label>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isAuthLoading}
+                    className="w-full mt-2 py-3 px-4 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-bold text-xs shadow-xs hover:shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60"
+                  >
+                    {isAuthLoading ? (
+                      <>
+                        <span className="material-symbols-outlined text-[16px] animate-spin">refresh</span>
+                        <span>Processing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>{authMode === 'signin' ? 'Sign In' : 'Create Free Account'}</span>
+                        <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
         </div>
@@ -893,35 +1220,6 @@ export const LandingScreen: React.FC = () => {
               <p className="text-xs text-on-surface-variant leading-relaxed">
                 Track category variances, daily burn rates, and multi-currency outlays strictly consolidated in Philippine Pesos.
               </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Bottom CTA Banner */}
-      <section className="py-16 md:py-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-r from-primary to-primary-container text-on-primary shadow-xl relative overflow-hidden">
-          <div className="relative z-10 max-w-2xl mx-auto">
-            <h2 className="text-2xl sm:text-4xl font-black font-display tracking-tight text-white">
-              Ready to orchestrate your next journey?
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-100 mt-3 font-medium">
-              Start building your personalized travel itinerary, map routes, and budget in seconds. No credit card required.
-            </p>
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
-              <Link
-                href="/login"
-                className="px-6 py-3.5 rounded-2xl bg-white text-slate-900 hover:bg-slate-100 font-bold text-xs shadow-md transition-all flex items-center gap-2"
-              >
-                <span>Create Free Traveler Account</span>
-                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-              </Link>
-              <Link
-                href="/login"
-                className="px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs border border-white/20 transition-all"
-              >
-                Sign In to Existing Trip
-              </Link>
             </div>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { LandingScreen } from '@/screens/LandingScreen';
@@ -12,5 +13,9 @@ export default async function RootPage() {
     redirect('/dashboard');
   }
 
-  return <LandingScreen />;
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-surface" />}>
+      <LandingScreen />
+    </Suspense>
+  );
 }
