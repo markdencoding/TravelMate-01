@@ -260,7 +260,7 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
           <div className="mt-2 flex items-center justify-between">
             <div>
               <span className="font-page-title text-page-title text-on-surface font-bold">
-                {trips[0]?.currency || 'USD'} {trips.reduce((acc, t) => acc + (t.budget || t.estimatedBudget || 0), 0).toLocaleString()}
+                {formatCurrency(trips.reduce((acc, t) => acc + (t.budget || t.estimatedBudget || 0), 0))}
               </span>
               <span className="font-caption text-caption text-on-surface-variant ml-1">total allocation</span>
             </div>

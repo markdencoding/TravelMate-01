@@ -42,7 +42,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
   const pendingRemindersCount = reminders.filter((r) => !r.completed).length;
 
   // Dynamic Metrics
-  const activeCurrency = activeTrip?.currency || 'USD';
+  const activeCurrency = activeTrip?.currency || 'PHP';
   const totalBudget = activeTrip ? (activeTrip.budget || activeTrip.estimatedBudget || 0) : 0;
   const totalExpenses = expenses.reduce((acc, curr) => acc + (curr.amount || 0), 0);
   const budgetRatio = totalBudget > 0 ? Math.min((totalExpenses / totalBudget) * 100, 100) : 0;

@@ -24,7 +24,7 @@ export function dbProfileToUiPreferences(
   existingLocalPrefs?: Partial<UserPreferences>
 ): UserPreferences {
   return {
-    currency: row.preferred_currency || 'USD',
+    currency: row.preferred_currency || 'PHP',
     measurementUnits: (row.measurement_units as 'metric' | 'imperial') || 'metric',
     tempUnit: row.measurement_units === 'imperial' ? 'F' : 'C',
     distUnit: row.measurement_units === 'imperial' ? 'mi' : 'km',

@@ -70,8 +70,8 @@ export const DossierScreen: React.FC = () => {
     const md = `# EXPEDITION BRIEFING DOSSIER: ${activeTrip?.title || 'Trip'}
 **Reference:** TM-EXP-${activeTrip?.id?.toUpperCase() || 'TRIP'}
 **Dates:** ${activeTrip?.dateRange || `${daysCount} Days`}
-**Lead Curator:** ${currentUser?.name || 'Traveler'}
-**Budget:** ${activeTrip?.currency || 'USD'} ${budgetCap.toLocaleString()} (Tracked: ${activeTrip?.currency || 'USD'} ${totalTracked.toLocaleString()})
+**Traveler:** ${currentUser?.name || 'Traveler'}
+**Budget:** ${formatCurrency(budgetCap)} (Tracked: ${formatCurrency(totalTracked)})
 
 ## Summary
 ${activeTrip?.description || activeTrip?.routeSummary || 'Curated journey dossier.'}
@@ -468,10 +468,10 @@ ${daysArray
                 Budget Allocation
               </span>
               <span className="font-bold text-slate-900">
-                {activeTrip?.currency || 'USD'} {budgetCap.toLocaleString()}
+                {formatCurrency(budgetCap)}
               </span>
               <span className="text-[10px] text-emerald-700 font-semibold block">
-                Variance: {budgetVariance >= 0 ? '+' : ''}{activeTrip?.currency || 'USD'} {budgetVariance.toLocaleString()} ({budgetVariance >= 0 ? 'Under' : 'Over'})
+                Variance: {budgetVariance >= 0 ? '+' : '-'}{formatCurrency(Math.abs(budgetVariance))} ({budgetVariance >= 0 ? 'Under' : 'Over'})
               </span>
             </div>
 
@@ -504,7 +504,7 @@ ${daysArray
                   verified
                 </span>
                 <span>
-                  <strong>Ledger:</strong> {activeTrip?.currency || 'USD'} {totalTracked.toLocaleString()} Logged
+                  <strong>Ledger:</strong> {formatCurrency(totalTracked)} Logged
                 </span>
               </div>
             </div>
@@ -663,7 +663,7 @@ ${daysArray
                         <td className="py-2 px-3 font-bold text-slate-900">{row.cat}</td>
                         <td className="py-2 px-3">{row.count} entries</td>
                         <td className="py-2 px-3 font-semibold">
-                          {activeTrip?.currency || 'USD'} {row.amt.toLocaleString()}
+                          {formatCurrency(row.amt)}
                         </td>
                         <td className="py-2 px-3">{row.pct}</td>
                         <td className="py-2 px-3 text-right text-emerald-700 font-bold text-[10px]">
@@ -675,7 +675,7 @@ ${daysArray
                   <tr className="bg-slate-50 font-bold text-slate-900">
                     <td className="py-2.5 px-3">TOTAL TRACKED EXPENSES</td>
                     <td className="py-2.5 px-3">{expenses.length} item{expenses.length === 1 ? '' : 's'}</td>
-                    <td className="py-2.5 px-3">{activeTrip?.currency || 'USD'} {totalTracked.toLocaleString()}</td>
+                    <td className="py-2.5 px-3">{formatCurrency(totalTracked)}</td>
                     <td className="py-2.5 px-3">{totalTracked > 0 ? '100%' : '0%'}</td>
                     <td className="py-2.5 px-3 text-right text-emerald-700">
                       {budgetVariance >= 0 ? 'UNDER CAP' : 'OVER CAP'}

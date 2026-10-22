@@ -37,10 +37,10 @@ export const ExpensesScreen: React.FC = () => {
 
   // Active trip details & single ledger currency
   const activeTrip = trips.find((t) => t.id === activeTripId) || trips[0] || null;
-  const tripCurrency = activeTrip?.currency || 'USD';
+  const tripCurrency = activeTrip?.currency || 'PHP';
 
   // User Home Currency and Local Destination Currency
-  const homeCurrency = userPreferences?.currency || preferences?.currency || 'USD';
+  const homeCurrency = userPreferences?.currency || preferences?.currency || 'PHP';
   const destinationCurrency = useMemo(() => getTripDestinationCurrency(activeTrip), [activeTrip]);
 
   // Live Exchange Rate (1 USD = X Destination Currency)
