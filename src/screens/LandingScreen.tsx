@@ -779,7 +779,7 @@ export const LandingScreen: React.FC = () => {
           </div>
 
           {/* Destination Selector Chips */}
-          <div className="flex flex-wrap items-center justify-center gap-2">
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap justify-start sm:justify-end">
             {SAMPLE_DESTINATIONS.map((dest) => {
               const isSelected = dest.id === selectedDestId;
               return (
@@ -790,7 +790,7 @@ export const LandingScreen: React.FC = () => {
                     setSelectedDestId(dest.id);
                     setSelectedDay(1);
                   }}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 touch-manipulation whitespace-nowrap min-h-[42px] ${
                     isSelected
                       ? 'bg-primary text-on-primary shadow-xs ring-2 ring-primary/20'
                       : 'bg-surface-container-low dark:bg-slate-800 text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
@@ -932,7 +932,7 @@ export const LandingScreen: React.FC = () => {
           </div>
 
           {/* Day Tabs */}
-          <div className="flex items-center justify-center gap-2 mb-8">
+          <div className="flex items-center justify-start sm:justify-center gap-2 mb-8 overflow-x-auto no-scrollbar py-1 -mx-4 px-4 sm:mx-0 sm:px-0">
             {activeDest.itinerary.map((dayItem) => {
               const isSelected = dayItem.day === selectedDay;
               return (
@@ -940,7 +940,7 @@ export const LandingScreen: React.FC = () => {
                   key={dayItem.day}
                   type="button"
                   onClick={() => setSelectedDay(dayItem.day)}
-                  className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
+                  className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0 touch-manipulation whitespace-nowrap min-h-[42px] ${
                     isSelected
                       ? 'bg-primary text-on-primary shadow-sm'
                       : 'bg-surface-container-lowest dark:bg-slate-800 text-on-surface-variant hover:text-on-surface border border-surface-container-high dark:border-slate-700'

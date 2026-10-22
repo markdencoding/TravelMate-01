@@ -127,9 +127,21 @@ body {
   scrollbar-width: none;
 }
 
-/* Safe area support for iOS home indicators */
+/* Safe area support for iOS home indicators and notches */
 .pb-safe {
   padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.h-safe-screen {
+  height: 100dvh;
+}
+.min-h-safe-screen {
+  min-height: 100dvh;
+}
+.touch-manipulation {
+  touch-action: manipulation;
 }
 
 /* Custom scrollbar using theme tokens for dark/light mode */

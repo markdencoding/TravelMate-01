@@ -1,11 +1,33 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { TravelStoreProvider } from '../store';
+import { MobileDeviceSimulator } from '@/components/MobileDeviceSimulator';
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: 'cover',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
+    { media: '(prefers-color-scheme: dark)', color: '#0b0f19' },
+  ],
+};
 
 export const metadata: Metadata = {
   title: 'TravelMate - Curated Trip Architecture',
   description:
     'Curated trip architecture, visual day-by-day itineraries, smart budgeting, and printable travel dossiers.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'TravelMate',
+  },
+  formatDetection: {
+    telephone: false,
+  },
 };
 
 export default function RootLayout({
@@ -55,7 +77,10 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-surface text-on-surface antialiased">
-        <TravelStoreProvider>{children}</TravelStoreProvider>
+        <TravelStoreProvider>
+          {children}
+          <MobileDeviceSimulator />
+        </TravelStoreProvider>
       </body>
     </html>
   );
