@@ -1,3 +1,4 @@
+import { headers } from 'next/headers';
 import { createClient } from '@/lib/supabase/server';
 import { dbTripToUiTrip } from '@/lib/mappers/trips';
 import type { DbTripRow } from '@/lib/types/database';
@@ -11,26 +12,37 @@ export { dbTripToUiTrip, type DbTripRow };
 export async function getTrips(): Promise<{ data: Trip[]; error: string | null }> {
   try {
     const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
 
-    if (authError || !user) {
-      return { data: [], error: 'Not authenticated' };
+    // Fast-path: read forwarded verified user ID from middleware to avoid duplicate remote auth roundtrip
+    let userId: string | null = null;
+    try {
+      const headerList = await headers();
+      userId = headerList.get('x-user-id');
+    } catch {}
+
+    if (!userId) {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError || !user) {
+        return { data: [], error: 'Not authenticated' };
+      }
+      userId = user.id;
     }
 
     let { data, error } = await supabase
       .from('trips')
       .select('*, destinations(*)')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .order('start_date', { ascending: true });
 
     if (error && error.message?.includes('destinations')) {
       const fallback = await supabase
         .from('trips')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('start_date', { ascending: true });
       data = fallback.data as any;
       error = fallback.error;

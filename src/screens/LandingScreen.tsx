@@ -185,6 +185,12 @@ export const LandingScreen: React.FC = () => {
           });
         }
 
+        const now = Date.now();
+        try {
+          localStorage.setItem('travelmate_last_active_time', String(now));
+          document.cookie = `travelmate_last_active=${now}; path=/; max-age=604800; SameSite=Lax`;
+        } catch {}
+
         setToastMessage('Signed in successfully.');
         router.push(redirectTo);
         router.refresh();

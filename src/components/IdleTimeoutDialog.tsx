@@ -3,12 +3,16 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { IDLE_TIMEOUT_MS, COUNTDOWN_SECONDS } from '@/lib/constants/auth';
+import {
+  IDLE_TIMEOUT_MS,
+  COUNTDOWN_SECONDS,
+  TOTAL_EXPIRY_MS,
+  INACTIVITY_COOKIE_NAME,
+} from '@/lib/constants/auth';
 import { useTravelStore } from '@/store';
 
 const STORAGE_KEY_LAST_ACTIVITY = 'travelmate_last_active_time';
 const STORAGE_KEY_WARNING_DEADLINE = 'travelmate_warning_deadline';
-const TOTAL_EXPIRY_MS = IDLE_TIMEOUT_MS + COUNTDOWN_SECONDS * 1000;
 
 export const IdleTimeoutDialog: React.FC = () => {
   const router = useRouter();
@@ -21,6 +25,15 @@ export const IdleTimeoutDialog: React.FC = () => {
 
   const getLastActiveTime = useCallback((): number => {
     try {
+      // 1. Check cookie first (shared with server middleware across tabs/browser closures)
+      const match = typeof document !== 'undefined'
+        ? document.cookie.match(new RegExp('(?:^|; )' + INACTIVITY_COOKIE_NAME + '=([^;]*)'))
+        : null;
+      if (match && match[1]) {
+        const parsedCookie = parseInt(match[1], 10);
+        if (!isNaN(parsedCookie) && parsedCookie > 0) return parsedCookie;
+      }
+      // 2. Check localStorage fallback
       const stored = localStorage.getItem(STORAGE_KEY_LAST_ACTIVITY);
       if (stored) {
         const parsed = parseInt(stored, 10);
@@ -47,6 +60,9 @@ export const IdleTimeoutDialog: React.FC = () => {
     try {
       localStorage.removeItem(STORAGE_KEY_LAST_ACTIVITY);
       localStorage.removeItem(STORAGE_KEY_WARNING_DEADLINE);
+      if (typeof document !== 'undefined') {
+        document.cookie = `${INACTIVITY_COOKIE_NAME}=; path=/; max-age=0; SameSite=Lax`;
+      }
       sessionStorage.clear();
     } catch {}
 
@@ -86,6 +102,9 @@ export const IdleTimeoutDialog: React.FC = () => {
     try {
       localStorage.setItem(STORAGE_KEY_LAST_ACTIVITY, String(now));
       localStorage.removeItem(STORAGE_KEY_WARNING_DEADLINE);
+      if (typeof document !== 'undefined') {
+        document.cookie = `${INACTIVITY_COOKIE_NAME}=${now}; path=/; max-age=604800; SameSite=Lax`;
+      }
     } catch {}
 
     setShowWarning(false);
@@ -143,6 +162,9 @@ export const IdleTimeoutDialog: React.FC = () => {
       // Update active timestamp
       try {
         localStorage.setItem(STORAGE_KEY_LAST_ACTIVITY, String(now));
+        if (typeof document !== 'undefined') {
+          document.cookie = `${INACTIVITY_COOKIE_NAME}=${now}; path=/; max-age=604800; SameSite=Lax`;
+        }
       } catch {}
 
       // If warning was active, user interaction dismisses it and notifies other tabs
@@ -154,16 +176,16 @@ export const IdleTimeoutDialog: React.FC = () => {
       channelRef.current?.postMessage({ type: 'ACTIVITY_DETECTED', timestamp: now });
     };
 
+    // First, verify whether the session has already expired while the browser was closed/inactive
+    checkSessionStatus();
+
     const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
     events.forEach((ev) => window.addEventListener(ev, handleUserInteraction, { passive: true }));
-
-    // Initialize activity timestamp on mount
-    handleUserInteraction();
 
     return () => {
       events.forEach((ev) => window.removeEventListener(ev, handleUserInteraction));
     };
-  }, [showWarning]);
+  }, [showWarning, checkSessionStatus]);
 
   // Tab visibility, focus, and back-forward cache resume handlers
   useEffect(() => {

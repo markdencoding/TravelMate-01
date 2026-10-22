@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { TOTAL_EXPIRY_MS, INACTIVITY_COOKIE_NAME } from '@/lib/constants/auth';
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -47,6 +48,11 @@ export async function updateSession(request: NextRequest) {
     (path) => pathname === path || (path !== '/' && pathname.startsWith(path + '/'))
   );
 
+  // Performance optimization: Fast-path for public API endpoints so they do not block on Supabase Auth roundtrips
+  if (pathname.startsWith('/api/')) {
+    return supabaseResponse;
+  }
+
 
   try {
     const supabase = createServerClient(
@@ -88,6 +94,46 @@ export async function updateSession(request: NextRequest) {
       });
       return redirectResponse;
     };
+
+    // Inactivity auto-logout verification (enforces timeout even if user closed the browser)
+    if (user && !isPublicRoute) {
+      const lastActiveCookie = request.cookies.get(INACTIVITY_COOKIE_NAME)?.value;
+      if (lastActiveCookie) {
+        const lastActive = parseInt(lastActiveCookie, 10);
+        const elapsed = Date.now() - lastActive;
+        if (!isNaN(lastActive) && elapsed >= TOTAL_EXPIRY_MS) {
+          try {
+            await supabase.auth.signOut();
+          } catch {}
+
+          const url = request.nextUrl.clone();
+          url.pathname = '/login';
+          url.searchParams.set('reason', 'idle');
+          const redirectResponse = NextResponse.redirect(url);
+          redirectResponse.cookies.delete(INACTIVITY_COOKIE_NAME);
+          supabaseResponse.cookies.getAll().forEach((cookie) => {
+            redirectResponse.cookies.set(cookie.name, '', { maxAge: 0, path: '/' });
+          });
+          return redirectResponse;
+        }
+      }
+
+      // Refresh activity cookie
+      supabaseResponse.cookies.set(INACTIVITY_COOKIE_NAME, String(Date.now()), {
+        path: '/',
+        sameSite: 'lax',
+        httpOnly: false,
+        maxAge: 7 * 24 * 60 * 60,
+      });
+
+      // Forward authenticated user ID to Server Components to eliminate duplicate getUser() queries
+      request.headers.set('x-user-id', user.id);
+      supabaseResponse = NextResponse.next({
+        request: {
+          headers: request.headers,
+        },
+      });
+    }
 
     // Check for network or connection failure reaching Supabase
     if (userError && !userError.message.toLowerCase().includes('auth session missing')) {

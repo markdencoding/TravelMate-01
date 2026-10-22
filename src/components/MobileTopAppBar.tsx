@@ -62,7 +62,7 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-30 lg:hidden w-full pt-safe bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors shadow-2xs">
+    <header className="sticky top-0 z-30 lg:hidden w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors shadow-2xs">
       {/* Full width expandable search mode */}
       {isSearchActive ? (
         <form
@@ -118,11 +118,6 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
               <h1 className="font-display font-extrabold text-base sm:text-lg text-slate-900 dark:text-white truncate tracking-tight">
                 {getPageTitle()}
               </h1>
-              {isDashboard && (
-                <span className="text-[10px] text-teal-600 dark:text-teal-400 font-mono font-bold uppercase tracking-wider">
-                  Kyoto &amp; Tokyo Atelier
-                </span>
-              )}
             </div>
           </div>
 
@@ -132,7 +127,7 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
             <button
               type="button"
               onClick={() => setIsSearchActive(true)}
-              className="w-10 h-10 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center cursor-pointer touch-manipulation"
+              className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               aria-label="Search"
             >
               <span className="material-symbols-outlined text-[20px]">search</span>
@@ -142,12 +137,12 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
             <button
               type="button"
               onClick={onOpenNotifications}
-              className="relative w-10 h-10 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center cursor-pointer touch-manipulation"
+              className="relative p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               aria-label="Notifications"
             >
               <span className="material-symbols-outlined text-[20px]">notifications</span>
               {unreadNotificationsCount > 0 && (
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 absolute top-2 right-2 ring-2 ring-white dark:ring-slate-900" />
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500 absolute top-1.5 right-1.5 ring-2 ring-white dark:ring-slate-900" />
               )}
             </button>
 
@@ -162,7 +157,7 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
                     openEditTripModal(activeTrip);
                   }
                 }}
-                className="w-10 h-10 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors flex items-center justify-center cursor-pointer touch-manipulation"
+                className="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 aria-label="Trip actions"
               >
                 <span className="material-symbols-outlined text-[20px]">more_vert</span>
