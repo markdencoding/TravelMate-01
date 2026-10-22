@@ -7,12 +7,14 @@ interface MobileTopAppBarProps {
   onOpenNotifications: () => void;
   onSearchSubmit?: (query: string) => void;
   onOpenTripActions?: () => void;
+  onOpenMenu?: () => void;
 }
 
 export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
   onOpenNotifications,
   onSearchSubmit,
   onOpenTripActions,
+  onOpenMenu,
 }) => {
   const pathname = usePathname();
   const router = useRouter();
@@ -101,16 +103,29 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
       ) : (
         /* Slim Top App Bar */
         <div className="h-14 px-4 flex items-center justify-between">
-          {/* Left: Back button (if detail) or Title */}
-          <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
+          {/* Left: Hamburger menu toggle + Back button (if detail) + Title */}
+          <div className="flex items-center gap-1.5 min-w-0 flex-1 mr-2">
+            {onOpenMenu && (
+              <button
+                type="button"
+                onClick={onOpenMenu}
+                className="p-1.5 -ml-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                aria-label="Open navigation menu"
+                title="Open navigation menu"
+              >
+                <span className="material-symbols-outlined text-[24px]">menu</span>
+              </button>
+            )}
+
             {!isDashboard && (
               <button
                 type="button"
                 onClick={handleBack}
-                className="p-1.5 -ml-1 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                className="p-1.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
                 aria-label="Go back"
+                title="Go back"
               >
-                <span className="material-symbols-outlined text-[22px]">arrow_back</span>
+                <span className="material-symbols-outlined text-[20px]">arrow_back</span>
               </button>
             )}
 

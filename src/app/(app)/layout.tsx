@@ -6,7 +6,6 @@ import { useTravelStore } from '@/store';
 import { Sidebar } from '@/components/Sidebar';
 import { Header } from '@/components/Header';
 import { EditTripModal } from '@/components/EditTripModal';
-import { BottomNav } from '@/components/BottomNav';
 import { MobileTopAppBar } from '@/components/MobileTopAppBar';
 import { QuickActionsSheet } from '@/components/QuickActionsSheet';
 import { MoreMenuSheet } from '@/components/MoreMenuSheet';
@@ -23,6 +22,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     activeTrip,
   } = useTravelStore();
 
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
   const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -71,6 +71,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Global Edit Trip Modal (Bottom Sheet on mobile, centered on desktop) */}
       <EditTripModal />
 
+      {/* Mobile Collapsible Navigation Drawer (replaces mobile bottom navigation) */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-50 lg:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation drawer"
+        >
+          {/* Backdrop overlay */}
+          <div
+            className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity duration-200"
+            onClick={() => setIsMobileMenuOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Slide-out Drawer Panel */}
+          <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-white dark:bg-slate-900 shadow-2xl z-50 animate-slide-left flex flex-col">
+            <Sidebar isMobileDrawer onClose={() => setIsMobileMenuOpen(false)} />
+          </div>
+        </div>
+      )}
+
       {/* Mobile Quick Actions Bottom Sheet */}
       <QuickActionsSheet
         isOpen={isQuickActionOpen}
@@ -106,25 +128,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Desktop Top Header Navbar (lg:flex) */}
           <Header onSearch={(q) => console.log('Search:', q)} />
 
-          {/* Mobile & Tablet Slim Top App Bar (below 1024px) */}
+          {/* Mobile & Tablet Slim Top App Bar (below 1024px) with Collapsible Menu Trigger */}
           <MobileTopAppBar
+            onOpenMenu={() => setIsMobileMenuOpen(true)}
             onOpenNotifications={() => setIsNotifOpen(true)}
             onSearchSubmit={(q) => console.log('Search:', q)}
             onOpenTripActions={() => openEditTripModal(activeTrip.id ? activeTrip : undefined)}
           />
 
-          {/* Scrollable Viewport with safe-area padding for docked bottom navigation bar */}
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-24 lg:pb-8 bg-slate-50/50 dark:bg-slate-950 transition-colors">
+          {/* Scrollable Viewport with standard bottom padding (reclaimed full height since bottom nav removed) */}
+          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-8 bg-slate-50/50 dark:bg-slate-950 transition-colors">
             <div className="max-w-7xl mx-auto">{children}</div>
           </main>
         </div>
       </div>
-
-      {/* Fixed Edge-to-Edge Docked Mobile Bottom Navigation (below 1024px) */}
-      <BottomNav
-        onOpenQuickAction={() => setIsQuickActionOpen(true)}
-        onOpenMore={() => setIsMoreMenuOpen(true)}
-      />
 
       {/* Floating Status & Navigation Helper (Quick Dock) */}
       <aside

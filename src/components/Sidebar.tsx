@@ -7,7 +7,12 @@ import { useTravelStore } from '../store';
 import { TabType } from '../types';
 import { createClient } from '@/lib/supabase/client';
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+  onClose?: () => void;
+  isMobileDrawer?: boolean;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ onClose, isMobileDrawer = false }) => {
   const pathname = usePathname();
   const router = useRouter();
   const {
@@ -36,27 +41,36 @@ export const Sidebar: React.FC = () => {
     { id: 'settings', href: '/settings', label: 'Settings', icon: 'settings' },
   ];
 
+  const showCollapsed = !isMobileDrawer && isSidebarCollapsed;
+
   return (
     <aside
       className={`no-print h-full flex flex-col justify-between p-3.5 border-r transition-all duration-300 select-none bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-100 shadow-xs ${
-        isSidebarCollapsed ? 'w-20 items-center' : 'w-64'
+        isMobileDrawer
+          ? 'w-full border-r-0'
+          : showCollapsed
+          ? 'w-20 items-center'
+          : 'w-64'
       }`}
     >
       {/* Top Section: Logo, Collapse Button, New Trip, Navigation */}
       <div className="flex flex-col gap-4 w-full">
-        {/* Header: Logo and Collapse/Expand Toggle */}
+        {/* Header: Logo and Collapse/Expand Toggle or Mobile Close Button */}
         <div className="flex items-center justify-between w-full px-1">
           <Link
             href="/dashboard"
+            onClick={() => {
+              if (isMobileDrawer && onClose) onClose();
+            }}
             className={`flex items-center gap-2.5 cursor-pointer group ${
-              isSidebarCollapsed ? 'justify-center w-full' : ''
+              showCollapsed ? 'justify-center w-full' : ''
             }`}
             title="TravelMate"
           >
             <div className="w-8 h-8 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
               <span className="material-symbols-outlined text-[20px]">explore</span>
             </div>
-            {!isSidebarCollapsed && (
+            {!showCollapsed && (
               <div className="flex flex-col leading-tight">
                 <span className="font-extrabold text-sm tracking-tight font-display text-slate-900 dark:text-white">
                   TravelMate
@@ -68,23 +82,35 @@ export const Sidebar: React.FC = () => {
             )}
           </Link>
 
-          {/* Minimize / Expand Toggle Button */}
-          {!isSidebarCollapsed && (
+          {/* Close button for mobile drawer OR Minimize / Expand Toggle for desktop */}
+          {isMobileDrawer ? (
             <button
-              onClick={toggleSidebarCollapsed}
+              type="button"
+              onClick={onClose}
               className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              title="Minimize sidebar to icon rail"
-              aria-label="Minimize sidebar"
+              title="Close navigation menu"
+              aria-label="Close navigation menu"
             >
-              <span className="material-symbols-outlined text-[18px]">
-                keyboard_double_arrow_left
-              </span>
+              <span className="material-symbols-outlined text-[20px]">close</span>
             </button>
+          ) : (
+            !showCollapsed && (
+              <button
+                onClick={toggleSidebarCollapsed}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                title="Minimize sidebar to icon rail"
+                aria-label="Minimize sidebar"
+              >
+                <span className="material-symbols-outlined text-[18px]">
+                  keyboard_double_arrow_left
+                </span>
+              </button>
+            )
           )}
         </div>
 
-        {/* Floating Expand Button when Collapsed */}
-        {isSidebarCollapsed && (
+        {/* Floating Expand Button when Collapsed (Desktop only) */}
+        {showCollapsed && (
           <button
             onClick={toggleSidebarCollapsed}
             className="w-10 h-7 rounded-lg text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center transition-colors cursor-pointer mx-auto"
@@ -98,7 +124,7 @@ export const Sidebar: React.FC = () => {
         )}
 
         {/* Primary CTA: New Trip Button */}
-        {isSidebarCollapsed ? (
+        {showCollapsed ? (
           <button
             onClick={() => openEditTripModal()}
             className="w-11 h-11 bg-primary hover:bg-primary-dark text-white rounded-xl flex items-center justify-center shadow-sm shadow-primary/25 transition-transform hover:scale-105 active:scale-95 cursor-pointer mx-auto"
@@ -109,7 +135,10 @@ export const Sidebar: React.FC = () => {
           </button>
         ) : (
           <button
-            onClick={() => openEditTripModal()}
+            onClick={() => {
+              openEditTripModal();
+              if (isMobileDrawer && onClose) onClose();
+            }}
             className="w-full h-10 bg-primary hover:bg-primary-dark text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm shadow-primary/25 transition-all hover:scale-[1.01] active:scale-95 cursor-pointer"
             type="button"
           >
@@ -129,8 +158,11 @@ export const Sidebar: React.FC = () => {
               <div key={item.id} className="relative group/nav w-full">
                 <Link
                   href={item.href}
+                  onClick={() => {
+                    if (isMobileDrawer && onClose) onClose();
+                  }}
                   className={`w-full flex items-center rounded-xl transition-all cursor-pointer ${
-                    isSidebarCollapsed
+                    showCollapsed
                       ? 'justify-center h-10 px-0'
                       : 'justify-between px-3 py-2 text-left'
                   } ${
@@ -138,18 +170,18 @@ export const Sidebar: React.FC = () => {
                       ? 'bg-primary text-white font-bold shadow-xs shadow-primary/20'
                       : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 hover:text-slate-900 dark:hover:text-slate-100'
                   }`}
-                  title={isSidebarCollapsed ? item.label : undefined}
+                  title={showCollapsed ? item.label : undefined}
                 >
                   <div className="flex items-center gap-2.5">
                     <span className="material-symbols-outlined text-[20px] shrink-0">
                       {item.icon}
                     </span>
-                    {!isSidebarCollapsed && (
+                    {!showCollapsed && (
                       <span className="text-xs font-semibold">{item.label}</span>
                     )}
                   </div>
 
-                  {!isSidebarCollapsed && item.secure && (
+                  {!showCollapsed && item.secure && (
                     <span
                       className={`text-[9px] font-mono uppercase font-bold px-1.5 py-0.5 rounded-full ${
                         isActive
@@ -162,13 +194,13 @@ export const Sidebar: React.FC = () => {
                   )}
 
                   {/* Notification Dot in collapsed mode */}
-                  {isSidebarCollapsed && item.id === 'dashboard' && unreadNotificationsCount > 0 && (
+                  {showCollapsed && item.id === 'dashboard' && unreadNotificationsCount > 0 && (
                     <span className="w-2 h-2 rounded-full bg-rose-500 absolute top-1.5 right-2" />
                   )}
                 </Link>
 
                 {/* Floating Tooltip Pill for Collapsed Mode */}
-                {isSidebarCollapsed && (
+                {showCollapsed && (
                   <div className="hidden group-hover/nav:flex absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1 bg-slate-900 dark:bg-slate-800 text-white text-[11px] font-semibold rounded-lg shadow-xl z-50 whitespace-nowrap pointer-events-none items-center gap-1.5 animate-fade-in">
                     <span>{item.label}</span>
                     {item.secure && (
@@ -185,7 +217,7 @@ export const Sidebar: React.FC = () => {
       {/* Bottom Section: Dark Mode Toggle, Alerts, Profile */}
       <div className="w-full flex flex-col gap-2 pt-3 border-t border-slate-100 dark:border-slate-800/80">
         {/* Quick Theme Toggle (Desktop Sidebar) */}
-        {isSidebarCollapsed ? (
+        {showCollapsed ? (
           <button
             type="button"
             suppressHydrationWarning
@@ -231,7 +263,7 @@ export const Sidebar: React.FC = () => {
 
         {/* User Profile Card */}
         <div className="relative w-full">
-          {isSidebarCollapsed ? (
+          {showCollapsed ? (
             <div
               onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
               className="w-10 h-10 mx-auto rounded-xl flex items-center justify-center cursor-pointer group"
@@ -285,12 +317,15 @@ export const Sidebar: React.FC = () => {
           {isProfileMenuOpen && (
             <div
               className={`absolute bottom-full mb-2 bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 p-1.5 flex flex-col gap-1 z-50 text-xs font-medium text-slate-700 dark:text-slate-200 ${
-                isSidebarCollapsed ? 'left-full ml-2 w-48' : 'left-0 right-0'
+                showCollapsed ? 'left-full ml-2 w-48' : 'left-0 right-0'
               }`}
             >
               <Link
                 href="/settings"
-                onClick={() => setIsProfileMenuOpen(false)}
+                onClick={() => {
+                  setIsProfileMenuOpen(false);
+                  if (isMobileDrawer && onClose) onClose();
+                }}
                 className="flex items-center gap-2 px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-700/80 rounded-xl transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">settings</span>
@@ -298,7 +333,10 @@ export const Sidebar: React.FC = () => {
               </Link>
               <Link
                 href="/dossier"
-                onClick={() => setIsProfileMenuOpen(false)}
+                onClick={() => {
+                  setIsProfileMenuOpen(false);
+                  if (isMobileDrawer && onClose) onClose();
+                }}
                 className="flex items-center gap-2 px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-700/80 rounded-xl transition-colors cursor-pointer"
               >
                 <span className="material-symbols-outlined text-[16px]">picture_as_pdf</span>
@@ -309,6 +347,7 @@ export const Sidebar: React.FC = () => {
                 type="button"
                 onClick={async () => {
                   setIsProfileMenuOpen(false);
+                  if (isMobileDrawer && onClose) onClose();
                   try {
                     const supabase = createClient();
                     await supabase.auth.signOut();
@@ -334,3 +373,4 @@ export const Sidebar: React.FC = () => {
     </aside>
   );
 };
+
