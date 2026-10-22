@@ -193,7 +193,7 @@ export const ExpensesScreen: React.FC = () => {
   };
 
   return (
-    <div className="w-full flex flex-col gap-space-lg max-w-[1440px] mx-auto px-space-md lg:px-space-xl py-space-md">
+    <div className="w-full flex flex-col gap-4 sm:gap-space-lg max-w-[1440px] mx-auto p-0 sm:px-space-md lg:px-space-xl py-1 sm:py-space-md">
       {/* Breadcrumb & Top Bar */}
       <div className="flex flex-col gap-space-xs">
         <nav className="flex items-center gap-2 font-caption text-caption text-on-surface-variant">
@@ -294,29 +294,29 @@ export const ExpensesScreen: React.FC = () => {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-space-sm self-start md:self-auto flex-wrap">
+          <div className="flex items-center gap-2 sm:gap-space-sm self-stretch md:self-auto flex-wrap">
             <button
               onClick={() => {
                 const el = document.getElementById('currencyConverterHub');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="h-[44px] px-3.5 bg-surface-container-lowest hover:bg-surface-container-low text-on-surface font-button text-button rounded-lg shadow-sm flex items-center gap-2 transition-colors cursor-pointer border border-surface-container-high/60"
+              className="flex-1 sm:flex-initial h-[40px] sm:h-[44px] px-3 sm:px-3.5 bg-surface-container-lowest hover:bg-surface-container-low text-on-surface font-button text-xs sm:text-button rounded-lg shadow-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-colors cursor-pointer border border-surface-container-high/60"
               type="button"
               title="Open Currency Converter"
             >
               <span className="material-symbols-outlined text-primary text-[18px]">currency_exchange</span>
-              <span className="font-semibold">Currency Converter</span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary">
+              <span className="font-semibold truncate">Converter</span>
+              <span className="hidden sm:inline px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary">
                 {destinationCurrency} ⇄ {homeCurrency}
               </span>
             </button>
             <button
               onClick={exportExpensesCsv}
-              className="h-[44px] px-4 bg-surface-container-lowest hover:bg-surface-container-low text-primary font-button text-button rounded-lg shadow-sm flex items-center gap-2 transition-colors cursor-pointer border border-surface-container-high/60"
+              className="flex-1 sm:flex-initial h-[40px] sm:h-[44px] px-3 sm:px-4 bg-surface-container-lowest hover:bg-surface-container-low text-primary font-button text-xs sm:text-button rounded-lg shadow-sm flex items-center justify-center gap-1.5 sm:gap-2 transition-colors cursor-pointer border border-surface-container-high/60"
               type="button"
             >
               <span className="material-symbols-outlined text-[18px]">file_download</span>
-              <span>Export CSV</span>
+              <span>Export</span>
             </button>
             <button
               onClick={() => {
@@ -327,7 +327,7 @@ export const ExpensesScreen: React.FC = () => {
                 const el = document.getElementById('addExpensePanel');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
               }}
-              className="h-[44px] px-5 bg-secondary hover:bg-secondary-container text-on-secondary font-button text-button rounded-lg shadow-[0_2px_8px_-2px_rgba(180,40,12,0.35)] flex items-center gap-2 transition-transform active:scale-95 cursor-pointer font-semibold"
+              className="w-full sm:w-auto sm:flex-initial h-[40px] sm:h-[44px] px-4 sm:px-5 bg-secondary hover:bg-secondary-container text-on-secondary font-button text-xs sm:text-button rounded-lg shadow-[0_2px_8px_-2px_rgba(180,40,12,0.35)] flex items-center justify-center gap-1.5 sm:gap-2 transition-transform active:scale-95 cursor-pointer font-semibold"
               type="button"
             >
               <span className="material-symbols-outlined text-[20px]">add</span>
@@ -361,10 +361,10 @@ export const ExpensesScreen: React.FC = () => {
       ) : (
         <>
           {/* Top Metrics Row: Sticky summary card at the top on mobile */}
-          <div className="flex flex-col gap-space-md sticky top-14 md:static z-20 bg-white/95 dark:bg-slate-900/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none -mx-4 px-4 md:mx-0 md:px-0 py-2 md:py-0 border-b md:border-b-0 border-slate-200/80 dark:border-slate-800 transition-colors">
-            <div className="flex md:grid md:grid-cols-3 gap-space-md overflow-x-auto md:overflow-x-visible snap-x snap-mandatory no-scrollbar pb-1 md:pb-0">
+          <div className="flex flex-col gap-space-md sticky top-14 md:static z-20 bg-white/95 dark:bg-slate-900/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none py-2 md:py-0 border-b md:border-b-0 border-slate-200/80 dark:border-slate-800 transition-colors">
+            <div className="flex md:grid md:grid-cols-3 gap-3 sm:gap-space-md overflow-x-auto md:overflow-x-visible snap-x snap-mandatory no-scrollbar pb-1 md:pb-0">
           {/* Metric Card 1: Budget Target */}
-          <div className="min-w-[85%] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between border border-surface-container-high/40">
+          <div className="min-w-[80%] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-2xl sm:rounded-xl p-3.5 sm:p-space-md shadow-xs sm:shadow-sm flex flex-col justify-between border border-surface-container-high/40">
             <div className="flex items-center justify-between">
               <span className="font-caption text-caption uppercase tracking-wider text-on-surface-variant font-bold">
                 Total Target Budget
@@ -391,7 +391,7 @@ export const ExpensesScreen: React.FC = () => {
           </div>
 
           {/* Metric Card 2: Estimated Spent */}
-          <div className="min-w-[85%] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between border border-surface-container-high/40">
+          <div className="min-w-[80%] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-2xl sm:rounded-xl p-3.5 sm:p-space-md shadow-xs sm:shadow-sm flex flex-col justify-between border border-surface-container-high/40">
             <div className="flex items-center justify-between">
               <span className="font-caption text-caption uppercase tracking-wider text-on-surface-variant font-bold">
                 Calculated Planned Total
@@ -419,7 +419,7 @@ export const ExpensesScreen: React.FC = () => {
 
           {/* Metric Card 3: Budget Variance Card */}
           <div
-            className={`min-w-[85%] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink rounded-xl p-space-md shadow-sm flex flex-col justify-between border ${
+            className={`min-w-[80%] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink rounded-2xl sm:rounded-xl p-3.5 sm:p-space-md shadow-xs sm:shadow-sm flex flex-col justify-between border ${
               isOverBudget
                 ? 'bg-error-container text-on-error-container border-error/20'
                 : 'bg-surface-container-lowest text-on-surface border-surface-container-high/40'
@@ -477,7 +477,7 @@ export const ExpensesScreen: React.FC = () => {
         </div>
 
         {/* Segmented Multi-Category Progress Rail */}
-        <div className="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-xs border border-surface-container-high/40">
+        <div className="bg-surface-container-lowest rounded-2xl sm:rounded-xl p-3.5 sm:p-space-md shadow-xs sm:shadow-sm flex flex-col gap-space-xs border border-surface-container-high/40">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <span className="font-item-title text-item-title text-on-surface font-semibold">
@@ -636,7 +636,7 @@ export const ExpensesScreen: React.FC = () => {
       {/* Main Content Grid: Table & Embedded Add Expense Panel */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-space-md items-start">
         {/* Primary Table Section */}
-        <div className="xl:col-span-8 bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-md border border-surface-container-high/40">
+        <div className="xl:col-span-8 bg-surface-container-lowest rounded-2xl sm:rounded-xl p-3.5 sm:p-space-md shadow-xs sm:shadow-sm flex flex-col gap-3 sm:gap-space-md border border-surface-container-high/40">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm pb-space-xs">
             {/* Filter Pills */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">

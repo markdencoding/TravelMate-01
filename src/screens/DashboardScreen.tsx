@@ -85,56 +85,56 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
   }, [expenses]);
 
   return (
-    <div className="w-full flex flex-col gap-space-lg max-w-[1400px] mx-auto px-space-lg py-space-lg">
+    <div className="w-full flex flex-col gap-4 sm:gap-space-lg max-w-[1400px] mx-auto p-0 sm:px-space-md lg:px-space-lg py-1 sm:py-space-lg">
       {/* Top Bar / Breadcrumb & Actions Context */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-md">
-        <div className="flex flex-col gap-space-xs">
-          <div className="flex items-center gap-space-xs text-on-surface-variant font-caption text-caption">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-space-md">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-1.5 text-on-surface-variant font-caption text-caption">
             <span>Home</span>
             <span className="material-symbols-outlined text-[14px]">chevron_right</span>
             <span className="font-body-medium text-primary font-semibold">Dashboard</span>
           </div>
-          <h1 className="font-display text-display text-on-surface tracking-tight">
+          <h1 className="font-display text-xl sm:text-2xl lg:text-display font-extrabold text-on-surface tracking-tight">
             Welcome back, {currentUser?.name?.split(' ')[0] || 'Traveler'}! ✨
           </h1>
-          <p className="font-body text-body text-on-surface-variant">
+          <p className="font-body text-xs sm:text-body text-on-surface-variant">
             {trips.length > 0
               ? `You have ${trips.length} upcoming ${trips.length === 1 ? 'trip' : 'trips'}. Here is your travel planning overview.`
               : 'Your travel planner is ready. Create your first trip to begin planning.'}
           </p>
         </div>
-        <div className="flex items-center gap-space-sm shrink-0">
+        <div className="flex items-center gap-2 sm:gap-space-sm w-full sm:w-auto">
           <button
             onClick={() => {
               setActiveTab('dossier');
               router.push('/dossier');
             }}
-            className="h-[44px] px-space-md bg-surface-container-lowest hover:bg-surface-container-low text-primary font-button text-button rounded-lg shadow-sm flex items-center gap-space-xs transition-all duration-200 cursor-pointer"
+            className="flex-1 sm:flex-initial h-10 px-3 sm:px-space-md bg-surface-container-lowest hover:bg-surface-container-low text-primary font-button text-xs sm:text-button rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer border border-surface-container-high/60"
             type="button"
           >
-            <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
-            <span>Export Itinerary PDF</span>
+            <span className="material-symbols-outlined text-[16px] sm:text-[18px]">picture_as_pdf</span>
+            <span className="truncate">Export Itinerary</span>
           </button>
           <button
             onClick={() => openEditTripModal()}
-            className="h-[44px] px-space-md bg-secondary hover:bg-secondary-container text-on-secondary font-button text-button rounded-lg shadow-md hover:shadow-lg flex items-center gap-space-xs transition-all duration-200 cursor-pointer active:scale-95"
+            className="flex-1 sm:flex-initial h-10 px-3.5 sm:px-space-md bg-secondary hover:bg-secondary-container text-on-secondary font-button text-xs sm:text-button rounded-xl shadow-sm flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer active:scale-95 font-bold"
             type="button"
           >
-            <span className="material-symbols-outlined text-[20px]">add</span>
+            <span className="material-symbols-outlined text-[18px] sm:text-[20px]">add</span>
             <span>New Trip</span>
           </button>
         </div>
       </div>
 
       {/* Key Stat Cards: Horizontal snap-scroll on mobile, 3-column grid on desktop/tablet */}
-      <div className="flex md:grid md:grid-cols-3 gap-space-md overflow-x-auto md:overflow-x-visible snap-x snap-mandatory no-scrollbar pb-2 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
+      <div className="flex md:grid md:grid-cols-3 gap-3 sm:gap-space-md overflow-x-auto md:overflow-x-visible snap-x snap-mandatory no-scrollbar pb-1 md:pb-0">
         {/* Stat 1: Upcoming Trips */}
         <div
           onClick={() => {
             setActiveTab('trips');
             router.push('/trips');
           }}
-          className="min-w-[85%] sm:min-w-[300px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between gap-space-sm relative overflow-hidden group hover:shadow-md transition-shadow cursor-pointer border border-surface-container-high/40"
+          className="min-w-[80vw] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-2xl p-4 sm:p-space-md shadow-xs flex flex-col justify-between gap-space-sm relative overflow-hidden group hover:shadow-md transition-shadow cursor-pointer border border-surface-container-high/40"
         >
           <div className="flex items-start justify-between">
             <div className="flex flex-col">
@@ -173,7 +173,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
             setActiveTab('expenses');
             router.push('/expenses');
           }}
-          className="min-w-[85%] sm:min-w-[300px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between gap-space-sm relative group hover:shadow-md transition-shadow cursor-pointer border border-surface-container-high/40"
+          className="min-w-[80vw] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-2xl p-4 sm:p-space-md shadow-xs flex flex-col justify-between gap-space-sm relative group hover:shadow-md transition-shadow cursor-pointer border border-surface-container-high/40"
         >
           <div className="flex items-start justify-between">
             <div className="flex flex-col">
@@ -217,7 +217,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
             setActiveTab('calendar');
             router.push('/calendar');
           }}
-          className="min-w-[85%] sm:min-w-[300px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between gap-space-sm relative group hover:shadow-md transition-shadow cursor-pointer border border-surface-container-high/40"
+          className="min-w-[80vw] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-2xl p-4 sm:p-space-md shadow-xs flex flex-col justify-between gap-space-sm relative group hover:shadow-md transition-shadow cursor-pointer border border-surface-container-high/40"
         >
           <div className="flex items-start justify-between">
             <div className="flex flex-col">
@@ -262,7 +262,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
 
       {/* Featured "Next Trip" Card & Bento Section */}
       {trips.length === 0 ? (
-        <div className="bg-surface-container-lowest rounded-xl p-space-xl shadow-sm flex flex-col items-center justify-center text-center border border-surface-container-high/50 py-16 animate-fade-in">
+        <div className="bg-surface-container-lowest rounded-2xl p-5 sm:p-space-xl shadow-xs flex flex-col items-center justify-center text-center border border-surface-container-high/50 py-12 sm:py-16 animate-fade-in">
           <div className="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant mb-space-sm">
             <span className="material-symbols-outlined text-[32px]">flight_takeoff</span>
           </div>
@@ -274,7 +274,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
           </p>
           <button
             onClick={() => openEditTripModal()}
-            className="mt-space-md h-[40px] px-5 rounded-lg bg-secondary hover:bg-secondary-container text-on-secondary font-button text-caption shadow-sm cursor-pointer font-semibold flex items-center gap-1.5"
+            className="mt-space-md h-[40px] px-5 rounded-xl bg-secondary hover:bg-secondary-container text-on-secondary font-button text-caption shadow-sm cursor-pointer font-semibold flex items-center gap-1.5"
             type="button"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
@@ -282,7 +282,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
           </button>
         </div>
       ) : (
-        <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-lg relative overflow-hidden border border-surface-container-high/50">
+        <div className="bg-surface-container-lowest rounded-2xl p-4 sm:p-space-lg shadow-xs flex flex-col gap-4 sm:gap-space-lg relative overflow-hidden border border-surface-container-high/50">
           {/* Header row */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
             <div className="flex flex-col sm:flex-row sm:items-center gap-space-md">
@@ -508,7 +508,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
       {/* Secondary Widgets Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-lg">
         {/* Chronological Upcoming Activities Timeline (7 cols) */}
-        <div className="lg:col-span-7 bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md border border-surface-container-high/40">
+        <div className="lg:col-span-7 bg-surface-container-lowest rounded-2xl p-4 sm:p-space-lg shadow-xs flex flex-col gap-space-md border border-surface-container-high/40">
           <div className="flex items-center justify-between pb-space-xs border-b border-surface-container-high/40">
             <div className="flex items-center gap-space-xs">
               <span className="material-symbols-outlined text-primary text-[22px]">schedule</span>
@@ -632,7 +632,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
         {/* Right Column: Reminders + Category Analytics (5 cols) */}
         <div className="lg:col-span-5 flex flex-col gap-space-lg">
           {/* Travel Reminders Checklist */}
-          <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md border border-surface-container-high/40">
+          <div className="bg-surface-container-lowest rounded-2xl p-4 sm:p-space-lg shadow-xs flex flex-col gap-space-md border border-surface-container-high/40">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-space-xs">
                 <span className="material-symbols-outlined text-secondary text-[22px]">checklist</span>
@@ -681,7 +681,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
           </div>
 
           {/* Category Breakdown Chart Preview */}
-          <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md border border-surface-container-high/40">
+          <div className="bg-surface-container-lowest rounded-2xl p-4 sm:p-space-lg shadow-xs flex flex-col gap-space-md border border-surface-container-high/40">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-space-xs">
                 <span className="material-symbols-outlined text-primary text-[22px]">pie_chart</span>

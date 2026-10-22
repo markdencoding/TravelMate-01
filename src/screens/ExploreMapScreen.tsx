@@ -487,7 +487,7 @@ export const ExploreMapScreen: React.FC = () => {
       )}
 
       {/* Top Context & Action Area */}
-      <div className="px-space-md sm:px-space-lg pt-space-md pb-space-sm bg-surface">
+      <div className="px-0 sm:px-space-lg pt-1 sm:pt-space-md pb-space-sm bg-surface">
         {/* Breadcrumb */}
         <nav aria-label="Breadcrumb" className="flex items-center gap-space-xs font-caption text-caption text-on-surface-variant mb-space-xs">
           <button
@@ -715,7 +715,7 @@ export const ExploreMapScreen: React.FC = () => {
       </div>
 
       {/* Two-Column Responsive Layout */}
-      <div className="px-space-md sm:px-space-lg pb-space-lg flex flex-col md:flex-row gap-space-md lg:gap-space-lg items-start">
+      <div className="px-0 sm:px-space-lg pb-space-lg flex flex-col md:flex-row gap-4 sm:gap-space-md lg:gap-space-lg items-start">
         {/* Left Column: Trip Highlights & Nearby Spots OR Search Results */}
         <div className="w-full md:w-[360px] lg:w-[450px] shrink-0 flex flex-col gap-space-md">
           {/* Subview Toggle if BOTH Trip and Search Results are active */}

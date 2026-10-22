@@ -81,7 +81,7 @@ export const WeatherForecastWidget: React.FC<WeatherForecastWidgetProps> = ({
 
   return (
     <div
-      className={`bg-surface-container-lowest rounded-2xl border border-surface-container-high/60 p-5 sm:p-6 shadow-sm flex flex-col gap-5 relative overflow-hidden transition-all ${className}`}
+      className={`bg-surface-container-lowest rounded-2xl border border-surface-container-high/60 p-4 sm:p-6 shadow-sm flex flex-col gap-4 sm:gap-5 relative overflow-hidden transition-all ${className}`}
     >
       {/* Top Controls Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-surface-container-high/40 pb-4">
@@ -182,16 +182,16 @@ export const WeatherForecastWidget: React.FC<WeatherForecastWidgetProps> = ({
       ) : weatherData ? (
         <>
           {/* Current Day Live Overview Hero Card */}
-          <div className="bg-gradient-to-r from-surface-container-low via-surface-container to-surface-container-low rounded-2xl p-4 sm:p-5 border border-surface-container-high/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-surface-container-lowest flex items-center justify-center text-primary shadow-xs shrink-0 border border-surface-container-high/30">
-                <span className="material-symbols-outlined text-[34px]">
+          <div className="bg-gradient-to-r from-surface-container-low via-surface-container to-surface-container-low rounded-2xl p-3.5 sm:p-5 border border-surface-container-high/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-surface-container-lowest flex items-center justify-center text-primary shadow-xs shrink-0 border border-surface-container-high/30">
+                <span className="material-symbols-outlined text-[30px] sm:text-[34px]">
                   {weatherData.currentIcon}
                 </span>
               </div>
               <div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-3xl sm:text-4xl font-extrabold text-on-surface font-display tracking-tight">
+                  <span className="text-2xl sm:text-4xl font-extrabold text-on-surface font-display tracking-tight">
                     {formatTemp(weatherData.currentTempC)}
                   </span>
                   <span className="text-xs font-medium text-on-surface-variant">
@@ -206,9 +206,9 @@ export const WeatherForecastWidget: React.FC<WeatherForecastWidgetProps> = ({
               </div>
             </div>
 
-            {/* Micro-metrics Pills */}
-            <div className="flex items-center gap-3 sm:gap-4 flex-wrap text-xs text-on-surface-variant">
-              <div className="flex items-center gap-1 bg-surface-container-lowest px-2.5 py-1.5 rounded-xl border border-surface-container-high/40 shadow-xs">
+            {/* Micro-metrics Pills: 2-col on mobile, flex row on tablet/desktop */}
+            <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-3 text-xs text-on-surface-variant w-full sm:w-auto">
+              <div className="flex items-center gap-1.5 bg-surface-container-lowest px-2.5 py-1.5 rounded-xl border border-surface-container-high/40 shadow-xs">
                 <span className="material-symbols-outlined text-primary text-[16px]">water_drop</span>
                 <div>
                   <span className="text-[10px] text-on-surface-variant block uppercase font-bold">Humidity</span>
@@ -216,7 +216,7 @@ export const WeatherForecastWidget: React.FC<WeatherForecastWidgetProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center gap-1 bg-surface-container-lowest px-2.5 py-1.5 rounded-xl border border-surface-container-high/40 shadow-xs">
+              <div className="flex items-center gap-1.5 bg-surface-container-lowest px-2.5 py-1.5 rounded-xl border border-surface-container-high/40 shadow-xs">
                 <span className="material-symbols-outlined text-secondary text-[16px]">air</span>
                 <div>
                   <span className="text-[10px] text-on-surface-variant block uppercase font-bold">Wind</span>
@@ -226,7 +226,7 @@ export const WeatherForecastWidget: React.FC<WeatherForecastWidgetProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center gap-1 bg-surface-container-lowest px-2.5 py-1.5 rounded-xl border border-surface-container-high/40 shadow-xs">
+              <div className="flex items-center gap-1.5 bg-surface-container-lowest px-2.5 py-1.5 rounded-xl border border-surface-container-high/40 shadow-xs">
                 <span className="material-symbols-outlined text-amber-500 text-[16px]">sunny</span>
                 <div>
                   <span className="text-[10px] text-on-surface-variant block uppercase font-bold">UV Index</span>
@@ -234,7 +234,7 @@ export const WeatherForecastWidget: React.FC<WeatherForecastWidgetProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center gap-1 bg-surface-container-lowest px-2.5 py-1.5 rounded-xl border border-surface-container-high/40 shadow-xs">
+              <div className="flex items-center gap-1.5 bg-surface-container-lowest px-2.5 py-1.5 rounded-xl border border-surface-container-high/40 shadow-xs">
                 <span className="material-symbols-outlined text-orange-400 text-[16px]">wb_twilight</span>
                 <div>
                   <span className="text-[10px] text-on-surface-variant block uppercase font-bold">Sun Times</span>
@@ -246,14 +246,14 @@ export const WeatherForecastWidget: React.FC<WeatherForecastWidgetProps> = ({
             </div>
           </div>
 
-          {/* 5-Day Day-by-Day Forecast Track */}
+          {/* 5-Day Day-by-Day Forecast Track (Horizontal Scrollable on Mobile) */}
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs font-bold text-on-surface-variant uppercase tracking-wider">
-              <span>5-Day Outlook (Tap day for hourly trajectory)</span>
+              <span>5-Day Outlook</span>
               <span className="text-[11px] font-normal lowercase">Updated {weatherData.lastUpdated}</span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3">
+            <div className="flex sm:grid sm:grid-cols-5 gap-2.5 sm:gap-3 overflow-x-auto no-scrollbar pb-1 snap-x snap-mandatory">
               {weatherData.forecast.map((day, idx) => {
                 const isSelected = selectedDayIndex === idx;
 
@@ -262,7 +262,7 @@ export const WeatherForecastWidget: React.FC<WeatherForecastWidgetProps> = ({
                     key={day.date}
                     type="button"
                     onClick={() => setSelectedDayIndex(idx)}
-                    className={`rounded-xl p-3 sm:p-3.5 flex flex-col justify-between items-center text-center transition-all cursor-pointer border ${
+                    className={`min-w-[110px] sm:min-w-0 flex-1 snap-start rounded-xl p-3 sm:p-3.5 flex flex-col justify-between items-center text-center transition-all cursor-pointer border ${
                       isSelected
                         ? 'bg-primary/10 border-primary ring-2 ring-primary/30 shadow-sm scale-[1.02]'
                         : 'bg-surface-container-low hover:bg-surface-container border-surface-container-high/40'
