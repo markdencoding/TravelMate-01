@@ -75,7 +75,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-screen bg-surface text-on-surface antialiased">
+      <body className="min-h-screen bg-surface text-on-surface antialiased w-full max-w-full overflow-x-clip">
         <TravelStoreProvider>{children}</TravelStoreProvider>
       </body>
     </html>

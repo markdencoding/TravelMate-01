@@ -291,10 +291,10 @@ export const LandingScreen: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-surface text-on-surface flex flex-col font-sans transition-colors selection:bg-primary/20 selection:text-primary">
+    <div className="min-h-screen bg-surface text-on-surface flex flex-col font-sans transition-colors selection:bg-primary/20 selection:text-primary w-full max-w-full overflow-x-clip">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 px-4 py-3 rounded-2xl bg-slate-900 text-white text-xs font-semibold shadow-xl border border-slate-700 flex items-center gap-2 animate-in fade-in slide-in-from-top-3">
+        <div className="fixed top-5 right-5 z-50 max-w-[calc(100vw-2.5rem)] px-4 py-3 rounded-2xl bg-slate-900 text-white text-xs font-semibold shadow-xl border border-slate-700 flex items-center gap-2 animate-in fade-in slide-in-from-top-3">
           <span className="material-symbols-outlined text-emerald-400 text-[18px]">check_circle</span>
           <span>{toastMessage}</span>
           <button
@@ -354,7 +354,7 @@ export const LandingScreen: React.FC = () => {
       </header>
 
       {/* Hero Section */}
-      <section id="auth-section" className="relative overflow-hidden pt-6 pb-12 sm:pt-10 sm:pb-16 md:pt-14 md:pb-20 border-b border-surface-container-high/60 dark:border-slate-800">
+      <section id="auth-section" className="relative overflow-x-clip pt-6 pb-12 sm:pt-10 sm:pb-16 md:pt-14 md:pb-20 border-b border-surface-container-high/60 dark:border-slate-800 w-full max-w-full">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
@@ -577,7 +577,7 @@ export const LandingScreen: React.FC = () => {
       </section>
 
       {/* Interactive Destination & Map Explorer */}
-      <section id="interactive-map" className="py-12 md:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <section id="interactive-map" className="py-12 md:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full max-w-full overflow-x-clip">
         <div className="text-center md:text-left mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <h2 className="text-xl sm:text-2xl font-black font-display tracking-tight text-on-surface">
@@ -589,7 +589,7 @@ export const LandingScreen: React.FC = () => {
           </div>
 
           {/* Destination Selector Chips */}
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap justify-start sm:justify-end">
+          <div className="w-full sm:w-auto max-w-full flex items-center gap-2 overflow-x-auto no-scrollbar py-1 sm:flex-wrap justify-start sm:justify-end">
             {SAMPLE_DESTINATIONS.map((dest) => {
               const isSelected = dest.id === selectedDestId;
               return (
