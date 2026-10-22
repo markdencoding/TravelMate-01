@@ -194,7 +194,9 @@ export const MobileDeviceSimulator: React.FC = () => {
             }}
           >
             <div
-              className="relative bg-black rounded-[52px] border-[12px] border-slate-800 dark:border-slate-700 shadow-2xl ring-1 ring-white/10 overflow-hidden transition-all duration-300"
+              className={`relative bg-black rounded-[52px] border-[12px] border-slate-800 dark:border-slate-700 shadow-2xl ring-1 ring-white/10 overflow-hidden transition-all duration-300 flex flex-col ${
+                !isLandscape ? 'pt-11' : ''
+              }`}
               style={{
                 width: `${frameWidth}px`,
                 height: `${frameHeight}px`,
@@ -245,11 +247,7 @@ export const MobileDeviceSimulator: React.FC = () => {
                 src={iframeUrl}
                 title="Mobile View Preview"
                 onLoad={() => setIsIframeLoading(false)}
-                className="w-full h-full border-0 bg-surface text-on-surface"
-                style={{
-                  width: `${frameWidth}px`,
-                  height: `${frameHeight}px`,
-                }}
+                className="flex-1 w-full border-0 bg-surface text-on-surface"
               />
 
               {/* iOS Home Indicator Bar */}
