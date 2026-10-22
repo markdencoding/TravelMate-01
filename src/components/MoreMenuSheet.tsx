@@ -32,7 +32,7 @@ export const MoreMenuSheet: React.FC<MoreMenuSheetProps> = ({
   };
 
   return (
-    <BottomSheet isOpen={isOpen} onClose={onClose} title="TravelMate Atelier" subtitle="Navigation & System Controls">
+    <BottomSheet isOpen={isOpen} onClose={onClose} title="TravelMate" subtitle="Navigation & System Controls">
       <div className="flex flex-col gap-5 pb-4">
         {/* User Avatar, Name and Email Card */}
         <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200/70 dark:border-slate-700/60">

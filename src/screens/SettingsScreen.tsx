@@ -121,7 +121,7 @@ export const SettingsScreen: React.FC = () => {
               Settings & Preferences
             </h1>
             <p className="text-xs sm:text-sm text-slate-500 mt-1">
-              Configure your expedition atelier, localization standards, offline caches, and data sovereignty.
+              Manage your account preferences, display options, and data settings.
             </p>
           </div>
         </div>
@@ -204,7 +204,7 @@ export const SettingsScreen: React.FC = () => {
                 <span className="font-semibold text-emerald-600 dark:text-emerald-400">Active</span>
               </div>
               <div className="flex justify-between">
-                <span>Total Expeditions:</span>
+                <span>Total Trips:</span>
                 <span className="font-semibold text-slate-800 dark:text-slate-200">
                   {trips.length} {trips.length === 1 ? 'trip' : 'trips'}
                 </span>
@@ -218,7 +218,7 @@ export const SettingsScreen: React.FC = () => {
 
           <div className="md:col-span-2 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-6 shadow-xs space-y-4">
             <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-display">
-              Curator Information
+              Profile Information
             </h3>
             <form onSubmit={handleSaveProfile} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -414,7 +414,7 @@ export const SettingsScreen: React.FC = () => {
                 </button>
               </div>
               <p className="text-[11px] text-slate-400 dark:text-slate-500 pt-0.5">
-                Active appearance: <span className="font-semibold text-slate-700 dark:text-slate-300">{darkMode ? 'Dark Theme (Night Explorer)' : 'Light Theme (Paper Atelier - Crisp White)'}</span>
+                Active appearance: <span className="font-semibold text-slate-700 dark:text-slate-300">{darkMode ? 'Dark Theme' : 'Light Theme'}</span>
                 {themePreference === 'system' && ' • Synchronized with device system preferences'}
               </p>
             </div>

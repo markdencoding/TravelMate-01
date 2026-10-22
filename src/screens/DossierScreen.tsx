@@ -308,7 +308,7 @@ ${daysArray
             No expedition dossier available
           </h4>
           <p className="font-body text-body text-on-surface-variant mt-1 max-w-sm">
-            Create an expedition first to generate and export professional physical dossiers, PDF briefs, and consular summaries.
+            Create a trip first to generate and export printable dossiers, PDF summaries, and travel itineraries.
           </p>
           <button
             onClick={() => openEditTripModal()}
@@ -316,7 +316,7 @@ ${daysArray
             type="button"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            <span>+ Create First Trip</span>
+            <span>Create First Trip</span>
           </button>
         </div>
       ) : (
@@ -335,7 +335,7 @@ ${daysArray
           <div className="flex items-center justify-between text-[10px] font-mono font-bold tracking-widest text-slate-500 uppercase border-b border-slate-200 pb-2.5 mb-4">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-slate-900 inline-block" />
-              <span>TRAVELMATE ATELIER • EXPEDITION DOSSIER</span>
+              <span>TRAVELMATE • TRIP DOSSIER</span>
               <span>•</span>
               <span className="text-slate-800">
                 ID #{activeTrip?.id?.toUpperCase() || 'TRP'}

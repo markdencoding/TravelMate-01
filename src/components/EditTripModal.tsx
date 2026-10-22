@@ -588,10 +588,10 @@ export const EditTripModal: React.FC = () => {
             </div>
             <div className="flex flex-col">
               <span className="font-badge text-badge text-secondary font-mono tracking-widest uppercase">
-                {editingTrip ? 'Expedition Atelier • Edit Mode' : 'Expedition Atelier • New Route'}
+                {editingTrip ? 'Trip Planner • Edit Mode' : 'Trip Planner • New Trip'}
               </span>
               <h2 id="modal-title" className="font-display font-bold text-title text-on-surface">
-                {editingTrip ? 'Edit Expedition Details' : 'Configure New Travel Route'}
+                {editingTrip ? 'Edit Trip Details' : 'Create New Trip'}
               </h2>
             </div>
           </div>
@@ -943,10 +943,10 @@ export const EditTripModal: React.FC = () => {
               >
                 <div className="flex items-center gap-1.5 font-bold text-xs">
                   <span className="material-symbols-outlined text-[16px]">group</span>
-                  <span>Collaborative Atelier</span>
+                  <span>Shared Trip</span>
                 </div>
                 <span className="text-[11px] opacity-80">
-                  Shared with co-travelers &amp; curators
+                  Shared with travel companions
                 </span>
               </button>
               <button

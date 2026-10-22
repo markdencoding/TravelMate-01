@@ -48,7 +48,7 @@ export const Header: React.FC<HeaderProps> = ({ onSearch }) => {
             </span>
             <input
               className="w-full h-9 pl-9 pr-4 bg-slate-50 dark:bg-slate-800/80 rounded-xl text-xs font-medium text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:bg-white dark:focus:bg-slate-800 border border-slate-200 dark:border-slate-700/60 shadow-2xs transition-all"
-              placeholder="Search expeditions, temples, bookings..."
+              placeholder="Search trips, places, expenses..."
               type="text"
               value={searchVal}
               onChange={handleSearchChange}
@@ -76,7 +76,7 @@ export const Header: React.FC<HeaderProps> = ({ onSearch }) => {
           <Link
             href="/settings"
             className="flex items-center gap-2 pl-1 cursor-pointer group"
-            title="Open curator profile"
+            title="Open user profile"
           >
             <img
               alt={`${currentUser?.name || 'User'} avatar`}

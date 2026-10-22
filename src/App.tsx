@@ -155,7 +155,7 @@ const MainLayout: React.FC = () => {
         >
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           <span className="text-[11px] font-mono text-slate-600 dark:text-slate-300">
-            {darkMode ? 'Night Explorer' : 'Paper Atelier'}
+            {darkMode ? 'Dark Theme' : 'Light Theme'}
           </span>
           <span className="text-slate-300 dark:text-slate-600">|</span>
           <button

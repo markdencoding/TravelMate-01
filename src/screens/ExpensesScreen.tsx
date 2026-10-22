@@ -290,14 +290,6 @@ export const ExpensesScreen: React.FC = () => {
                 <span>🇵🇭</span>
                 <span>Philippine Peso (PHP, ₱)</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsConverterModalOpen(true)}
-                className="text-xs text-primary font-semibold hover:underline flex items-center gap-1 cursor-pointer ml-1"
-              >
-                <span className="material-symbols-outlined text-[14px]">currency_exchange</span>
-                <span>Open Currency Converter</span>
-              </button>
             </div>
           </div>
 
@@ -312,8 +304,8 @@ export const ExpensesScreen: React.FC = () => {
               type="button"
               title="Open Currency Converter"
             >
-              <span className="material-symbols-outlined text-primary text-[18px]">payments</span>
-              <span className="font-semibold">FX Converter</span>
+              <span className="material-symbols-outlined text-primary text-[18px]">currency_exchange</span>
+              <span className="font-semibold">Currency Converter</span>
               <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-primary/10 text-primary">
                 {destinationCurrency} ⇄ {homeCurrency}
               </span>
@@ -355,7 +347,7 @@ export const ExpensesScreen: React.FC = () => {
             No trips created yet
           </h4>
           <p className="font-body text-body text-on-surface-variant mt-1 max-w-sm">
-            Create an expedition first to begin tracking expenses, category budgets, and multi-currency conversions.
+            Create a trip first to begin tracking expenses, category budgets, and currency conversions.
           </p>
           <button
             onClick={() => openEditTripModal()}
@@ -363,7 +355,7 @@ export const ExpensesScreen: React.FC = () => {
             type="button"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            <span>+ Create First Trip</span>
+            <span>Create First Trip</span>
           </button>
         </div>
       ) : (

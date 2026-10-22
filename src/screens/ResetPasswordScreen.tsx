@@ -87,7 +87,7 @@ export const ResetPasswordScreen: React.FC = () => {
       if (error) {
         setErrorMessage(error.message);
       } else {
-        setSuccessMessage('Your password has been successfully updated. Redirecting to atelier...');
+        setSuccessMessage('Your password has been successfully updated. Redirecting to dashboard...');
         setTimeout(() => {
           router.push('/dashboard');
         }, 1200);
@@ -137,7 +137,7 @@ export const ResetPasswordScreen: React.FC = () => {
         </h1>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-6">
           {isRecoverySession
-            ? 'Enter your new secure password below to regain access to your expedition atelier.'
+            ? 'Enter your new secure password below to regain access to your account.'
             : 'Enter the email associated with your account and we’ll dispatch a recovery link.'}
         </p>
 

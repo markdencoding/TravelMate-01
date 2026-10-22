@@ -447,7 +447,7 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
               type="button"
             >
               <span className="material-symbols-outlined text-[18px]">add</span>
-              <span>+ Create First Trip</span>
+              <span>Create First Trip</span>
             </button>
           </div>
         </div>

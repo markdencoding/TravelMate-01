@@ -297,7 +297,7 @@ export const CalendarScreen: React.FC = () => {
             </span>
           </div>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Synchronized calendar matrix with transit pacing, weather warnings, and schedule conflicts.
+            View your daily schedule, trip timelines, and upcoming activities at a glance.
           </p>
         </div>
 
@@ -359,7 +359,7 @@ export const CalendarScreen: React.FC = () => {
             type="button"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            <span>+ Create First Trip</span>
+            <span>Create First Trip</span>
           </button>
         </div>
       ) : (

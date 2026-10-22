@@ -51,7 +51,7 @@ export const Sidebar: React.FC = () => {
             className={`flex items-center gap-2.5 cursor-pointer group ${
               isSidebarCollapsed ? 'justify-center w-full' : ''
             }`}
-            title="TravelMate Atelier"
+            title="TravelMate"
           >
             <div className="w-8 h-8 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
               <span className="material-symbols-outlined text-[20px]">explore</span>
@@ -62,7 +62,7 @@ export const Sidebar: React.FC = () => {
                   TravelMate
                 </span>
                 <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono tracking-wider uppercase">
-                  Atelier
+                  Trip Planner
                 </span>
               </div>
             )}

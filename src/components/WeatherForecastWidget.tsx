@@ -402,7 +402,7 @@ export const WeatherForecastWidget: React.FC<WeatherForecastWidgetProps> = ({
               nature_people
             </span>
             <div className="text-xs text-on-surface leading-relaxed">
-              <span className="font-bold text-primary">Atelier Weather Briefing: </span>
+              <span className="font-bold text-primary">Weather Insight: </span>
               {weatherData.expeditionInsight}
             </div>
           </div>

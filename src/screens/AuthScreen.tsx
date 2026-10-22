@@ -87,7 +87,7 @@ export const AuthScreen: React.FC = () => {
           });
         }
 
-        setToastMessage('Authenticated successfully. Redirecting to expedition atelier...');
+        setToastMessage('Authenticated successfully. Redirecting to dashboard...');
         router.push(redirectTo);
         router.refresh();
       } catch (err: unknown) {

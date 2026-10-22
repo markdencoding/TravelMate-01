@@ -924,7 +924,7 @@ export const ExploreMapScreen: React.FC = () => {
                               title="Add to Itinerary"
                             >
                               <span className="material-symbols-outlined text-[15px]">event_available</span>
-                              <span>+ Add</span>
+                              <span>Add</span>
                             </button>
                           </div>
                         </div>
@@ -1126,7 +1126,7 @@ export const ExploreMapScreen: React.FC = () => {
                             className="h-7 px-3 bg-secondary hover:bg-secondary-container text-on-secondary font-button text-caption rounded-lg flex items-center gap-1 transition-colors shadow-xs cursor-pointer font-semibold"
                           >
                             <span className="material-symbols-outlined text-[15px]">add</span>
-                            <span>+ Add to Trip</span>
+                            <span>Add to Trip</span>
                           </button>
                         </div>
                       </div>

@@ -100,7 +100,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
           <p className="font-body text-body text-on-surface-variant">
             {trips.length > 0
               ? `You have ${trips.length} upcoming ${trips.length === 1 ? 'trip' : 'trips'}. Here is your travel planning overview.`
-              : 'Your expedition atelier is ready. Create your first journey to begin planning.'}
+              : 'Your travel planner is ready. Create your first trip to begin planning.'}
           </p>
         </div>
         <div className="flex items-center gap-space-sm shrink-0">
@@ -278,7 +278,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
             type="button"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
-            <span>+ Create First Trip</span>
+            <span>Create First Trip</span>
           </button>
         </div>
       ) : (
