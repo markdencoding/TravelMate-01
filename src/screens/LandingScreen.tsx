@@ -533,30 +533,30 @@ export const LandingScreen: React.FC = () => {
       </header>
 
       {/* HERO SECTION WITH DUAL COLS: Left Value Prop, Right Interactive Sign In / Sign Up */}
-      <section id="auth-section" className="relative overflow-hidden pt-8 pb-16 md:pt-14 md:pb-20 border-b border-surface-container-high/60 dark:border-slate-800">
+      <section id="auth-section" className="relative overflow-hidden pt-6 pb-12 sm:pt-10 sm:pb-16 md:pt-14 md:pb-20 border-b border-surface-container-high/60 dark:border-slate-800">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            {/* Left Column: Rich Value Proposition & Interactive Highlights (7 cols) */}
-            <div className="lg:col-span-7 space-y-6 text-left">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6 lg:gap-8 items-start">
+            {/* Left Column: Rich Value Proposition & Interactive Highlights */}
+            <div className="md:col-span-6 lg:col-span-7 space-y-5 sm:space-y-6 text-left">
               {/* Badge */}
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold bg-primary/10 dark:bg-primary/20 text-primary border border-primary/20">
                 <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                 <span>Interactive Trip Architecture • Zero Noise, Zero Ads</span>
               </div>
 
-              <h1 className="text-3xl sm:text-5xl font-black font-display tracking-tight text-on-surface leading-tight">
+              <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black font-display tracking-tight text-on-surface leading-tight">
                 Plan with intentionality. Every temple, winding alley, and budget line item.
               </h1>
 
-              <p className="text-sm sm:text-base text-on-surface-variant font-medium leading-relaxed max-w-xl">
+              <p className="text-xs sm:text-sm lg:text-base text-on-surface-variant font-medium leading-relaxed max-w-xl">
                 TravelMate unifies visual day-by-day itineraries, interactive Leaflet route maps, live Open-Meteo weather forecasts, and Philippine Peso expense tracking into one unified atelier.
               </p>
 
               {/* Quick Feature Badges */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3 pt-1">
                 <div className="p-3 rounded-2xl bg-surface-container-low/70 dark:bg-slate-900/60 border border-surface-container-high/40 dark:border-slate-800">
-                  <div className="text-base font-bold text-on-surface flex items-center gap-1.5">
+                  <div className="text-sm sm:text-base font-bold text-on-surface flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-primary text-[18px]">map</span>
                     <span>Leaflet Maps</span>
                   </div>
@@ -564,7 +564,7 @@ export const LandingScreen: React.FC = () => {
                 </div>
 
                 <div className="p-3 rounded-2xl bg-surface-container-low/70 dark:bg-slate-900/60 border border-surface-container-high/40 dark:border-slate-800">
-                  <div className="text-base font-bold text-on-surface flex items-center gap-1.5">
+                  <div className="text-sm sm:text-base font-bold text-on-surface flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-primary text-[18px]">wb_sunny</span>
                     <span>Live Weather</span>
                   </div>
@@ -572,7 +572,7 @@ export const LandingScreen: React.FC = () => {
                 </div>
 
                 <div className="p-3 rounded-2xl bg-surface-container-low/70 dark:bg-slate-900/60 border border-surface-container-high/40 dark:border-slate-800 col-span-2 sm:col-span-1">
-                  <div className="text-base font-bold text-on-surface flex items-center gap-1.5">
+                  <div className="text-sm sm:text-base font-bold text-on-surface flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-primary text-[18px]">payments</span>
                     <span>PHP (₱) Base</span>
                   </div>
@@ -584,7 +584,7 @@ export const LandingScreen: React.FC = () => {
               <div className="pt-2 flex items-center gap-4">
                 <a
                   href="#interactive-map"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-bold text-xs border border-surface-container-high dark:border-slate-700 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl bg-surface-container-low hover:bg-surface-container text-on-surface font-bold text-xs border border-surface-container-high dark:border-slate-700 transition-colors w-full sm:w-auto text-center"
                 >
                   <span className="material-symbols-outlined text-[18px] text-primary">travel_explore</span>
                   <span>Explore Live Interactive Preview Below</span>
@@ -593,8 +593,8 @@ export const LandingScreen: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Column: Embedded Interactive Sign In / Create Account Card (5 cols) */}
-            <div className="lg:col-span-5">
+            {/* Right Column: Embedded Interactive Sign In / Create Account Card */}
+            <div className="md:col-span-6 lg:col-span-5 w-full">
               <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-3xl border border-surface-container-high dark:border-slate-800 shadow-xl overflow-hidden p-6 sm:p-8 transition-colors">
                 {/* Tabs */}
                 <div className="flex items-center justify-between border-b border-surface-container-high/60 dark:border-slate-800 pb-3 mb-5">
@@ -807,9 +807,9 @@ export const LandingScreen: React.FC = () => {
         </div>
 
         {/* Interactive Map Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-          {/* Left Column: Destination Card & Live Weather (4 cols) */}
-          <div className="lg:col-span-4 flex flex-col gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
+          {/* Left Column: Destination Card & Live Weather */}
+          <div className="md:col-span-5 lg:col-span-4 flex flex-col gap-4">
             {/* Destination Highlight Card */}
             <div className="p-5 rounded-3xl bg-surface-container-lowest dark:bg-slate-900 border border-surface-container-high dark:border-slate-800 shadow-sm flex flex-col justify-between">
               <div>
@@ -904,8 +904,8 @@ export const LandingScreen: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Column: Real Leaflet Map (8 cols) */}
-          <div className="lg:col-span-8 h-[440px] sm:h-[520px] rounded-3xl overflow-hidden border border-surface-container-high dark:border-slate-800 shadow-sm relative">
+          {/* Right Column: Real Leaflet Map */}
+          <div className="md:col-span-7 lg:col-span-8 min-h-[380px] sm:min-h-[440px] rounded-3xl overflow-hidden border border-surface-container-high dark:border-slate-800 shadow-sm relative">
             <TripMap
               destinations={mapDestinations}
               extraSpots={activeDest.spots}
@@ -1059,9 +1059,9 @@ export const LandingScreen: React.FC = () => {
                   className="w-full h-2 bg-surface-container-high rounded-lg appearance-none cursor-pointer accent-primary"
                 />
                 <div className="flex justify-between text-[10px] font-mono text-on-surface-variant mt-2">
-                  <span>₱15,000 (Local Weekend)</span>
+                  <span>₱15,000<span className="hidden sm:inline"> (Local Weekend)</span></span>
                   <span>₱100,000</span>
-                  <span>₱250,000 (International Long-Haul)</span>
+                  <span>₱250,000<span className="hidden sm:inline"> (International Long-Haul)</span></span>
                 </div>
               </div>
 
