@@ -53,7 +53,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (action === 'trip') {
       openEditTripModal();
     } else if (action === 'activity') {
-      router.push('/trips');
+      router.push('/calendar');
     } else if (action === 'expense') {
       router.push('/expenses');
     }

@@ -37,8 +37,12 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
   } = useTravelStore();
 
   React.useEffect(() => {
-    if (initialTrips !== undefined) {
-      setTrips(initialTrips);
+    if (initialTrips !== undefined && initialTrips.length > 0) {
+      setTrips((prevTrips) => {
+        const initialIds = new Set(initialTrips.map((t) => t.id));
+        const newlyAdded = prevTrips.filter((t) => !initialIds.has(t.id));
+        return [...newlyAdded, ...initialTrips];
+      });
     }
   }, [initialTrips, setTrips]);
 
@@ -59,8 +63,8 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
         grouped[d.tripId].push(d);
       });
 
-      setTrips(
-        trips.map((t) => {
+      setTrips((prevTrips) =>
+        prevTrips.map((t) => {
           if (grouped[t.id] && (!t.destinationsData || t.destinationsData.length === 0)) {
             return { ...t, destinationsData: grouped[t.id] };
           }
@@ -72,7 +76,7 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
     return () => {
       isMounted = false;
     };
-  }, [trips, setTrips]);
+  }, [setTrips]);
 
   // Filter & sort logic
   const filteredTrips = useMemo(() => {
@@ -124,7 +128,10 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
         <div className="flex items-center gap-space-xs font-caption text-caption text-on-surface-variant">
           <button
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => {
+              setActiveTab('dashboard');
+              router.push('/dashboard');
+            }}
             className="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
             type="button"
           >
@@ -161,7 +168,10 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
         </div>
         <div className="flex items-center gap-space-sm">
           <button
-            onClick={() => setActiveTab('dossier')}
+            onClick={() => {
+              setActiveTab('dossier');
+              router.push('/dossier');
+            }}
             className="h-[44px] px-5 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-primary font-button text-button transition-all flex items-center gap-2 shadow-sm cursor-pointer"
             type="button"
           >
@@ -663,6 +673,7 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
                     onClick={() => {
                       setActiveTripId(trip.id);
                       setActiveTab('dossier');
+                      router.push('/dossier');
                     }}
                     className="font-item-title text-item-title text-on-surface group-hover:text-primary transition-colors cursor-pointer font-semibold"
                   >
@@ -735,6 +746,7 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
                   onClick={() => {
                     setActiveTripId(trip.id);
                     setActiveTab('dossier');
+                    router.push('/dossier');
                   }}
                   className="h-[40px] px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-button text-caption flex items-center justify-center transition-colors cursor-pointer"
                   title="View Full Trip Overview"
@@ -799,7 +811,10 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
           </div>
         </div>
         <button
-          onClick={() => setActiveTab('explore-map')}
+          onClick={() => {
+            setActiveTab('explore-map');
+            router.push('/explore');
+          }}
           className="w-full md:w-auto h-[40px] px-4 rounded-lg bg-primary hover:bg-primary-container text-on-primary font-button text-caption flex items-center justify-center gap-2 transition-colors cursor-pointer"
           type="button"
         >

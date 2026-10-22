@@ -48,6 +48,7 @@ export const EditTripModal: React.FC = () => {
   const [endDate, setEndDate] = useState('');
   const [dateError, setDateError] = useState<string | null>(null);
   const [titleError, setTitleError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const [budget, setBudget] = useState('');
   const [privacy, setPrivacy] = useState<'collaborative' | 'private'>('collaborative');
   const [notes, setNotes] = useState('');
@@ -89,6 +90,7 @@ export const EditTripModal: React.FC = () => {
       setEndDate(toIsoDate(editingTrip.endDate, ''));
       setDateError(null);
       setTitleError(null);
+      setFormError(null);
       setBudget(
         editingTrip.budget || editingTrip.estimatedBudget
           ? (editingTrip.budget ?? editingTrip.estimatedBudget ?? 0).toLocaleString('en-US', {
@@ -149,6 +151,7 @@ export const EditTripModal: React.FC = () => {
       setEndDate('');
       setDateError(null);
       setTitleError(null);
+      setFormError(null);
       setBudget('');
       setNotes('');
       setSelectedCover('');
@@ -443,6 +446,7 @@ export const EditTripModal: React.FC = () => {
       return;
     }
     setDateError(null);
+    setFormError(null);
 
     setIsSaving(true);
     const parsedBudget = parseFloat(budget.replace(/[^0-9.]/g, '')) || 0;
@@ -488,9 +492,11 @@ export const EditTripModal: React.FC = () => {
             coverImageCreditUrl: selectedCover ? selectedCoverCreditUrl : '',
             destinations: destinations.map((d) => d.name),
           });
+          setIsEditTripModalOpen(false);
+          router.push('/trips');
+          router.refresh();
         } else {
-          setDateError(res.error || 'Failed to update trip.');
-          setIsSaving(false);
+          setFormError(res.error || 'Failed to update trip.');
           return;
         }
       } else {
@@ -525,64 +531,19 @@ export const EditTripModal: React.FC = () => {
             coverImageCreditUrl: selectedCover ? selectedCoverCreditUrl : '',
             destinations: destinations.map((d) => d.name),
           });
+          setIsEditTripModalOpen(false);
+          router.push('/trips');
+          router.refresh();
         } else {
-          setDateError(res.error || 'Failed to create trip.');
-          setIsSaving(false);
+          setFormError(res.error || 'Failed to create trip.');
           return;
         }
       }
-    } catch (err) {
-      console.warn('Trip action fallback to local store:', err);
-      if (editingTrip) {
-        updateTrip(editingTrip.id, {
-          title,
-          startDate,
-          endDate,
-          dateRange: computedRange,
-          daysCount: computedDays,
-          estimatedBudget: parsedBudget,
-          budget: parsedBudget,
-          currency: 'PHP',
-          notes,
-          coverImage: selectedCover || '',
-          coverImageAlt: selectedCover ? (selectedCoverAlt || `${title.trim()} cover`) : '',
-          coverImageCredit: selectedCover ? selectedCoverCredit : '',
-          coverImageCreditUrl: selectedCover ? selectedCoverCreditUrl : '',
-          privacy,
-          destinationRegion: derivedRegion,
-          destinations: destinations.map((d) => d.name),
-        });
-      } else {
-        addTrip({
-          title: title || 'Untitled Expedition',
-          destinationRegion: derivedRegion,
-          country: derivedCountry,
-          dateRange: computedRange,
-          startDate,
-          endDate,
-          daysCount: computedDays,
-          status: 'planned',
-          statusLabel: 'PLANNED',
-          seasonTag: 'Planned 2026',
-          estimatedBudget: parsedBudget,
-          currency: 'PHP',
-          budgetCap: parsedBudget * 1.25,
-          activitiesCount: 0,
-          accommodationsCount: 0,
-          coverImage: selectedCover || '',
-          coverImageAlt: selectedCover ? (selectedCoverAlt || `${title.trim()} cover`) : '',
-          coverImageCredit: selectedCover ? selectedCoverCredit : '',
-          coverImageCreditUrl: selectedCover ? selectedCoverCreditUrl : '',
-          routeLabel: `${destinations[0]?.name || 'Start'} ➔ ${destinations[1]?.name || 'End'}`,
-          notes,
-          privacy,
-          destinations: destinations.map((d) => d.name),
-        });
-      }
+    } catch (err: any) {
+      console.warn('Trip action failed:', err);
+      setFormError(err?.message || 'An unexpected error occurred while saving trip.');
     } finally {
       setIsSaving(false);
-      setIsEditTripModalOpen(false);
-      router.push('/trips');
     }
   };
 
@@ -652,6 +613,16 @@ export const EditTripModal: React.FC = () => {
           }}
           className="p-gutter-md overflow-y-auto flex-1 flex flex-col gap-space-lg custom-scrollbar"
         >
+          {formError && (
+            <div
+              role="alert"
+              className="p-3 bg-error/10 border border-error/30 text-error rounded-xl flex items-start gap-2.5 text-xs font-semibold"
+            >
+              <span className="material-symbols-outlined text-[18px] shrink-0">error</span>
+              <span>{formError}</span>
+            </div>
+          )}
+
           {/* Field 1: Trip Title */}
           <div className="flex flex-col gap-space-xs">
             <div className="flex items-center justify-between">

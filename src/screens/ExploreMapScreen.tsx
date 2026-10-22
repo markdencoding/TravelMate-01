@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/navigation';
 import { useTravelStore } from '../store';
 import { Trip, TripStatus, ActivityCategory, ScheduledActivity } from '@/types';
 import { PlaceItem } from '@/lib/validators/places';
@@ -49,6 +50,7 @@ function mapGeoapifyToActivityCategory(cat?: string): ActivityCategory {
 }
 
 export const ExploreMapScreen: React.FC = () => {
+  const router = useRouter();
   const { trips, activeTripId, setActiveTab } = useTravelStore();
 
   // Search State
@@ -489,7 +491,10 @@ export const ExploreMapScreen: React.FC = () => {
         {/* Breadcrumb */}
         <nav aria-label="Breadcrumb" className="flex items-center gap-space-xs font-caption text-caption text-on-surface-variant mb-space-xs">
           <button
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => {
+              setActiveTab('dashboard');
+              router.push('/dashboard');
+            }}
             className="hover:text-primary transition-colors cursor-pointer"
             type="button"
           >
@@ -597,7 +602,10 @@ export const ExploreMapScreen: React.FC = () => {
                 </span>
                 <button
                   type="button"
-                  onClick={() => setActiveTab('trips')}
+                  onClick={() => {
+                    setActiveTab('trips');
+                    router.push('/trips');
+                  }}
                   className="text-primary font-bold hover:underline cursor-pointer ml-1"
                 >
                   Create or view expeditions &rarr;
@@ -1290,7 +1298,10 @@ export const ExploreMapScreen: React.FC = () => {
                       </p>
                       <button
                         type="button"
-                        onClick={() => setActiveTab('trips')}
+                        onClick={() => {
+                          setActiveTab('trips');
+                          router.push('/trips');
+                        }}
                         className="text-xs text-primary font-semibold hover:underline cursor-pointer"
                       >
                         Create your first trip in Trips

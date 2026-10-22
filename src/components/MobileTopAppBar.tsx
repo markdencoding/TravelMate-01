@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTravelStore } from '../store';
 import { TabType } from '../types';
 
@@ -13,6 +14,8 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
   onSearchSubmit,
   onOpenTripActions,
 }) => {
+  const pathname = usePathname();
+  const router = useRouter();
   const {
     activeTab,
     setActiveTab,
@@ -27,31 +30,18 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
 
   const activeTrip = trips.find((t) => t.id === activeTripId);
 
-  // Determine if detail page
-  const isDetailPage = activeTab === 'dossier' || (activeTab === 'trips' && Boolean(activeTrip));
+  const isDashboard = pathname === '/dashboard' || pathname === '/';
+  const isDetailPage = pathname.startsWith('/dossier') || (pathname.startsWith('/trips') && Boolean(activeTrip));
 
-  // Title calculation based on current tab
-  const getPageTitle = (tab: TabType) => {
-    switch (tab) {
-      case 'dashboard':
-        return 'Home';
-      case 'trips':
-        return 'Expeditions';
-      case 'explore-map':
-        return 'Explore & Map';
-      case 'expenses':
-        return 'Expenses & Budget';
-      case 'calendar':
-        return 'Calendar';
-      case 'dossier':
-        return activeTrip ? activeTrip.title : 'Trip Dossier';
-      case 'settings':
-        return 'Settings';
-      case 'admin':
-        return 'Admin Panel';
-      default:
-        return 'TravelMate';
-    }
+  const getPageTitle = () => {
+    if (pathname.startsWith('/trips')) return 'Expeditions';
+    if (pathname.startsWith('/explore')) return 'Explore & Map';
+    if (pathname.startsWith('/expenses')) return 'Expenses & Budget';
+    if (pathname.startsWith('/calendar')) return 'Calendar';
+    if (pathname.startsWith('/dossier')) return activeTrip ? activeTrip.title : 'Trip Dossier';
+    if (pathname.startsWith('/settings')) return 'Settings';
+    if (pathname.startsWith('/admin')) return 'Admin Panel';
+    return 'Home';
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -62,10 +52,12 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
   };
 
   const handleBack = () => {
-    if (activeTab === 'dossier') {
+    if (pathname.startsWith('/dossier')) {
       setActiveTab('trips');
+      router.push('/trips');
     } else {
       setActiveTab('dashboard');
+      router.push('/dashboard');
     }
   };
 
@@ -111,7 +103,7 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
         <div className="h-14 px-4 flex items-center justify-between">
           {/* Left: Back button (if detail) or Title */}
           <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-            {activeTab !== 'dashboard' && (
+            {!isDashboard && (
               <button
                 type="button"
                 onClick={handleBack}
@@ -124,9 +116,9 @@ export const MobileTopAppBar: React.FC<MobileTopAppBarProps> = ({
 
             <div className="flex flex-col min-w-0">
               <h1 className="font-display font-extrabold text-base sm:text-lg text-slate-900 dark:text-white truncate tracking-tight">
-                {getPageTitle(activeTab)}
+                {getPageTitle()}
               </h1>
-              {activeTab === 'dashboard' && (
+              {isDashboard && (
                 <span className="text-[10px] text-teal-600 dark:text-teal-400 font-mono font-bold uppercase tracking-wider">
                   Kyoto &amp; Tokyo Atelier
                 </span>

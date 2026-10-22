@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTravelStore } from '../store';
 
 interface NotificationsPopoverProps {
@@ -7,6 +8,7 @@ interface NotificationsPopoverProps {
 }
 
 export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({ isOpen, onClose }) => {
+  const router = useRouter();
   const {
     notifications,
     markAllNotificationsRead,
@@ -193,6 +195,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({ isOp
                             type="button"
                             onClick={() => {
                               setActiveTab('expenses');
+                              router.push('/expenses');
                               onClose();
                             }}
                             className="h-7 px-3 bg-primary hover:bg-primary-container text-on-primary font-button text-caption rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
@@ -284,6 +287,7 @@ export const NotificationsPopover: React.FC<NotificationsPopoverProps> = ({ isOp
             type="button"
             onClick={() => {
               setActiveTab('settings');
+              router.push('/settings');
               onClose();
             }}
             className="flex items-center gap-1.5 text-on-surface-variant hover:text-primary font-button text-caption transition-colors cursor-pointer"

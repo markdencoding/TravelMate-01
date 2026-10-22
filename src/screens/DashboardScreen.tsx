@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTravelStore } from '../store';
 import { WeatherForecastWidget } from '../components/WeatherForecastWidget';
 import { ActivitySwipeCard } from '../components/ActivitySwipeCard';
@@ -13,6 +14,7 @@ interface DashboardScreenProps {
 }
 
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }) => {
+  const router = useRouter();
   const {
     trips,
     setTrips,
@@ -28,8 +30,12 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
   } = useTravelStore();
 
   React.useEffect(() => {
-    if (initialTrips !== undefined) {
-      setTrips(initialTrips);
+    if (initialTrips !== undefined && initialTrips.length > 0) {
+      setTrips((prevTrips) => {
+        const initialIds = new Set(initialTrips.map((t) => t.id));
+        const newlyAdded = prevTrips.filter((t) => !initialIds.has(t.id));
+        return [...newlyAdded, ...initialTrips];
+      });
     }
   }, [initialTrips, setTrips]);
 
@@ -99,7 +105,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
         </div>
         <div className="flex items-center gap-space-sm shrink-0">
           <button
-            onClick={() => setActiveTab('dossier')}
+            onClick={() => {
+              setActiveTab('dossier');
+              router.push('/dossier');
+            }}
             className="h-[44px] px-space-md bg-surface-container-lowest hover:bg-surface-container-low text-primary font-button text-button rounded-lg shadow-sm flex items-center gap-space-xs transition-all duration-200 cursor-pointer"
             type="button"
           >
@@ -121,7 +130,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
       <div className="flex md:grid md:grid-cols-3 gap-space-md overflow-x-auto md:overflow-x-visible snap-x snap-mandatory no-scrollbar pb-2 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
         {/* Stat 1: Upcoming Trips */}
         <div
-          onClick={() => setActiveTab('trips')}
+          onClick={() => {
+            setActiveTab('trips');
+            router.push('/trips');
+          }}
           className="min-w-[85%] sm:min-w-[300px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between gap-space-sm relative overflow-hidden group hover:shadow-md transition-shadow cursor-pointer border border-surface-container-high/40"
         >
           <div className="flex items-start justify-between">
@@ -157,7 +169,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
 
         {/* Stat 2: Estimated Budget */}
         <div
-          onClick={() => setActiveTab('expenses')}
+          onClick={() => {
+            setActiveTab('expenses');
+            router.push('/expenses');
+          }}
           className="min-w-[85%] sm:min-w-[300px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between gap-space-sm relative group hover:shadow-md transition-shadow cursor-pointer border border-surface-container-high/40"
         >
           <div className="flex items-start justify-between">
@@ -198,7 +213,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
 
         {/* Stat 3: Days Until Next Trip */}
         <div
-          onClick={() => setActiveTab('calendar')}
+          onClick={() => {
+            setActiveTab('calendar');
+            router.push('/calendar');
+          }}
           className="min-w-[85%] sm:min-w-[300px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col justify-between gap-space-sm relative group hover:shadow-md transition-shadow cursor-pointer border border-surface-container-high/40"
         >
           <div className="flex items-start justify-between">
@@ -321,7 +339,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
             {/* Quick Action Buttons */}
             <div className="flex items-center gap-space-xs flex-wrap">
               <button
-                onClick={() => setActiveTab('explore-map')}
+                onClick={() => {
+                  setActiveTab('explore-map');
+                  router.push('/explore');
+                }}
                 className="h-9 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-button text-caption flex items-center gap-1 transition-colors cursor-pointer"
                 type="button"
               >
@@ -337,7 +358,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
                 <span>Edit Trip</span>
               </button>
               <button
-                onClick={() => setActiveTab('dossier')}
+                onClick={() => {
+                  setActiveTab('dossier');
+                  router.push('/dossier');
+                }}
                 className="h-9 px-4 rounded-lg bg-primary text-on-primary hover:bg-primary-container font-button text-caption flex items-center gap-1.5 transition-colors cursor-pointer"
                 type="button"
               >
@@ -348,13 +372,21 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
           </div>
 
           {/* 5-Day Weather Forecast Component for Currently Selected Destination */}
-          <WeatherForecastWidget onExploreRouteClick={() => setActiveTab('explore-map')} />
+          <WeatherForecastWidget
+            onExploreRouteClick={() => {
+              setActiveTab('explore-map');
+              router.push('/explore');
+            }}
+          />
 
           {/* Middle Split: Route Thumbnail + Budget Indicator */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-space-md">
             {/* Route Map Preview */}
             <div
-              onClick={() => setActiveTab('explore-map')}
+              onClick={() => {
+                setActiveTab('explore-map');
+                router.push('/explore');
+              }}
               className="lg:col-span-6 rounded-xl relative overflow-hidden group min-h-[160px] flex flex-col justify-end p-space-md cursor-pointer shadow-xs"
               style={
                 activeTrip.coverImage
@@ -393,7 +425,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
 
             {/* Budget Multi-segment Rail */}
             <div
-              onClick={() => setActiveTab('expenses')}
+              onClick={() => {
+                setActiveTab('expenses');
+                router.push('/expenses');
+              }}
               className="lg:col-span-6 bg-surface-container-low rounded-xl p-space-md flex flex-col justify-between gap-space-md cursor-pointer hover:bg-surface-container transition-colors"
             >
               <div className="flex items-center justify-between">
@@ -493,7 +528,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
               {trips.length > 0 && (
                 <button
                   type="button"
-                  onClick={() => setActiveTab('calendar')}
+                  onClick={() => {
+                    setActiveTab('calendar');
+                    router.push('/calendar');
+                  }}
                   className="text-primary font-semibold hover:underline cursor-pointer"
                 >
                   + Add activity in calendar

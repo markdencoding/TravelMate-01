@@ -4,10 +4,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { IDLE_TIMEOUT_MS, COUNTDOWN_SECONDS } from '@/lib/constants/auth';
-
 import { useTravelStore } from '@/store';
 
 const STORAGE_KEY_LAST_ACTIVITY = 'travelmate_last_active_time';
+const STORAGE_KEY_WARNING_DEADLINE = 'travelmate_warning_deadline';
+const TOTAL_EXPIRY_MS = IDLE_TIMEOUT_MS + COUNTDOWN_SECONDS * 1000;
 
 export const IdleTimeoutDialog: React.FC = () => {
   const router = useRouter();
@@ -15,58 +16,99 @@ export const IdleTimeoutDialog: React.FC = () => {
   const [showWarning, setShowWarning] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(COUNTDOWN_SECONDS);
   const channelRef = useRef<BroadcastChannel | null>(null);
-  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastInteractionThrottleRef = useRef<number>(0);
+  const isSigningOutRef = useRef<boolean>(false);
+
+  const getLastActiveTime = useCallback((): number => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_LAST_ACTIVITY);
+      if (stored) {
+        const parsed = parseInt(stored, 10);
+        if (!isNaN(parsed) && parsed > 0) return parsed;
+      }
+    } catch {
+      // localStorage may fail in some environments
+    }
+    return Date.now();
+  }, []);
 
   const performSignOut = useCallback(async () => {
+    if (isSigningOutRef.current) return;
+    isSigningOutRef.current = true;
+
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
     } catch (err) {
       console.error('Idle auto-logout error:', err);
     }
+
     clearUserData();
     try {
       localStorage.removeItem(STORAGE_KEY_LAST_ACTIVITY);
+      localStorage.removeItem(STORAGE_KEY_WARNING_DEADLINE);
       sessionStorage.clear();
     } catch {}
-    // Notify other tabs
+
+    // Notify other tabs immediately
     channelRef.current?.postMessage({ type: 'SIGNED_OUT' });
     router.replace('/login?reason=idle');
   }, [router, clearUserData]);
+
+  const checkSessionStatus = useCallback(() => {
+    if (isSigningOutRef.current) return;
+
+    const now = Date.now();
+    const lastActive = getLastActiveTime();
+    const elapsed = now - lastActive;
+
+    // 1. Session completely expired (e.g. tab returned after being hidden or system woke from sleep)
+    if (elapsed >= TOTAL_EXPIRY_MS) {
+      performSignOut();
+      return;
+    }
+
+    // 2. Inactivity threshold reached: within warning countdown period
+    if (elapsed >= IDLE_TIMEOUT_MS) {
+      const remainingMs = TOTAL_EXPIRY_MS - elapsed;
+      const remainingSecs = Math.max(1, Math.ceil(remainingMs / 1000));
+      setSecondsRemaining(remainingSecs);
+      setShowWarning(true);
+      return;
+    }
+
+    // 3. User is actively working: ensure warning dialog is closed
+    setShowWarning(false);
+  }, [getLastActiveTime, performSignOut]);
 
   const resetActivity = useCallback(() => {
     const now = Date.now();
     try {
       localStorage.setItem(STORAGE_KEY_LAST_ACTIVITY, String(now));
-    } catch {
-      // localStorage may fail in private mode
-    }
-    if (showWarning) {
-      setShowWarning(false);
-      setSecondsRemaining(COUNTDOWN_SECONDS);
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = null;
-      }
-      channelRef.current?.postMessage({ type: 'RESET_IDLE' });
-    }
-  }, [showWarning]);
+      localStorage.removeItem(STORAGE_KEY_WARNING_DEADLINE);
+    } catch {}
 
-  // Set up BroadcastChannel for multi-tab sync
+    setShowWarning(false);
+    setSecondsRemaining(COUNTDOWN_SECONDS);
+
+    // Notify all other open tabs to dismiss warning and reset idle state
+    channelRef.current?.postMessage({ type: 'RESET_IDLE', timestamp: now });
+  }, []);
+
+  // BroadcastChannel and Storage sync across multiple tabs
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+    if (typeof window === 'undefined') return;
+
+    if ('BroadcastChannel' in window) {
       const channel = new BroadcastChannel('travelmate_auth_channel');
       channelRef.current = channel;
 
       channel.onmessage = (event) => {
-        if (event.data?.type === 'RESET_IDLE') {
+        if (event.data?.type === 'RESET_IDLE' || event.data?.type === 'ACTIVITY_DETECTED') {
           setShowWarning(false);
           setSecondsRemaining(COUNTDOWN_SECONDS);
-          if (countdownIntervalRef.current) {
-            clearInterval(countdownIntervalRef.current);
-            countdownIntervalRef.current = null;
-          }
         } else if (event.data?.type === 'SIGNED_OUT') {
+          isSigningOutRef.current = true;
           router.replace('/login?reason=idle');
         }
       };
@@ -77,23 +119,45 @@ export const IdleTimeoutDialog: React.FC = () => {
     }
   }, [router]);
 
-  // Track user activity listeners
+  // Synchronize across tabs using window storage event
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === STORAGE_KEY_LAST_ACTIVITY) {
+        checkSessionStatus();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [checkSessionStatus]);
+
+  // Track user interaction (throttled to avoid performance impact)
   useEffect(() => {
     const handleUserInteraction = () => {
-      // Only reset activity timestamp if the warning modal is not active
-      if (!showWarning) {
-        try {
-          localStorage.setItem(STORAGE_KEY_LAST_ACTIVITY, String(Date.now()));
-        } catch {
-          // ignore
-        }
+      const now = Date.now();
+      if (now - lastInteractionThrottleRef.current < 2000) return;
+      lastInteractionThrottleRef.current = now;
+
+      // Update active timestamp
+      try {
+        localStorage.setItem(STORAGE_KEY_LAST_ACTIVITY, String(now));
+      } catch {}
+
+      // If warning was active, user interaction dismisses it and notifies other tabs
+      if (showWarning) {
+        setShowWarning(false);
+        setSecondsRemaining(COUNTDOWN_SECONDS);
       }
+
+      channelRef.current?.postMessage({ type: 'ACTIVITY_DETECTED', timestamp: now });
     };
 
     const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
     events.forEach((ev) => window.addEventListener(ev, handleUserInteraction, { passive: true }));
 
-    // Initialize activity timestamp
+    // Initialize activity timestamp on mount
     handleUserInteraction();
 
     return () => {
@@ -101,54 +165,36 @@ export const IdleTimeoutDialog: React.FC = () => {
     };
   }, [showWarning]);
 
-  // Poll inactivity interval
+  // Tab visibility, focus, and back-forward cache resume handlers
   useEffect(() => {
-    const checkIdleInterval = setInterval(() => {
-      if (showWarning) return;
+    if (typeof window === 'undefined') return;
 
-      let lastActive = Date.now();
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY_LAST_ACTIVITY);
-        if (stored) lastActive = parseInt(stored, 10);
-      } catch {
-        // ignore
-      }
-
-      const elapsed = Date.now() - lastActive;
-      if (elapsed >= IDLE_TIMEOUT_MS) {
-        setShowWarning(true);
-        setSecondsRemaining(COUNTDOWN_SECONDS);
-      }
-    }, 5000);
-
-    return () => clearInterval(checkIdleInterval);
-  }, [showWarning]);
-
-  // Countdown timer while warning is visible
-  useEffect(() => {
-    if (!showWarning) return;
-
-    countdownIntervalRef.current = setInterval(() => {
-      setSecondsRemaining((prev) => {
-        if (prev <= 1) {
-          if (countdownIntervalRef.current) {
-            clearInterval(countdownIntervalRef.current);
-            countdownIntervalRef.current = null;
-          }
-          performSignOut();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => {
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = null;
+    const handleVisibilityOrResume = () => {
+      if (document.visibilityState === 'visible') {
+        checkSessionStatus();
       }
     };
-  }, [showWarning, performSignOut]);
+
+    document.addEventListener('visibilitychange', handleVisibilityOrResume);
+    window.addEventListener('focus', checkSessionStatus);
+    window.addEventListener('pageshow', checkSessionStatus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityOrResume);
+      window.removeEventListener('focus', checkSessionStatus);
+      window.removeEventListener('pageshow', checkSessionStatus);
+    };
+  }, [checkSessionStatus]);
+
+  // Interval checks: 5s when normal, 1s when warning is visible (always deadline-calculated)
+  useEffect(() => {
+    const checkIntervalMs = showWarning ? 1000 : 5000;
+    const intervalId = setInterval(() => {
+      checkSessionStatus();
+    }, checkIntervalMs);
+
+    return () => clearInterval(intervalId);
+  }, [showWarning, checkSessionStatus]);
 
   if (!showWarning) return null;
 

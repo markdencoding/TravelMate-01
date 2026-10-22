@@ -30,18 +30,20 @@ export async function updateSession(request: NextRequest) {
 
   // Allow public routes
   const publicPaths = [
+    '/',
     '/login',
     '/auth/callback',
     '/reset-password',
     '/unconfigured',
     '/api/exchange-rates',
     '/api/places',
+    '/api/photos',
     '/api/recommendations',
     '/api/weather',
     '/explore',
   ];
   const isPublicRoute = publicPaths.some(
-    (path) => pathname === path || pathname.startsWith(path + '/')
+    (path) => pathname === path || (path !== '/' && pathname.startsWith(path + '/'))
   );
 
 
@@ -104,9 +106,12 @@ export async function updateSession(request: NextRequest) {
 
     // Launch behavior for root `/`:
     if (pathname === '/') {
-      const url = request.nextUrl.clone();
-      url.pathname = user ? '/dashboard' : '/login';
-      return createRedirect(url);
+      if (user) {
+        const url = request.nextUrl.clone();
+        url.pathname = '/dashboard';
+        return createRedirect(url);
+      }
+      return supabaseResponse;
     }
 
     // Redirect unauthenticated users from protected routes to /login

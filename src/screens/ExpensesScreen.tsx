@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useTravelStore } from '../store';
 import { ExpenseCategory, ExpenseItem } from '../types';
 import { ExpenseDonutChart } from '../components/ExpenseDonutChart';
@@ -14,6 +15,7 @@ import { formatCurrency } from '@/lib/currencies';
 import { createExpenseAction, deleteExpenseAction } from '@/app/actions/expenses';
 
 export const ExpensesScreen: React.FC = () => {
+  const router = useRouter();
   const {
     expenses,
     addExpense,
@@ -196,7 +198,10 @@ export const ExpensesScreen: React.FC = () => {
       <div className="flex flex-col gap-space-xs">
         <nav className="flex items-center gap-2 font-caption text-caption text-on-surface-variant">
           <button
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => {
+              setActiveTab('dashboard');
+              router.push('/dashboard');
+            }}
             className="hover:text-primary transition-colors cursor-pointer"
             type="button"
           >
@@ -204,7 +209,10 @@ export const ExpensesScreen: React.FC = () => {
           </button>
           <span className="material-symbols-outlined text-[14px]">chevron_right</span>
           <button
-            onClick={() => setActiveTab('trips')}
+            onClick={() => {
+              setActiveTab('trips');
+              router.push('/trips');
+            }}
             className="hover:text-primary transition-colors cursor-pointer"
             type="button"
           >

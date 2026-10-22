@@ -27,7 +27,7 @@ interface TravelStoreContextType {
 
   // Trips
   trips: Trip[];
-  setTrips: (trips: Trip[]) => void;
+  setTrips: React.Dispatch<React.SetStateAction<Trip[]>>;
   addTrip: (trip: Omit<Trip, 'id'> | Trip) => void;
   updateTrip: (id: string, updates: Partial<Trip>) => void;
   deleteTrip: (id: string) => void;
@@ -510,7 +510,7 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const openEditTripModal = (trip?: Trip) => {
-    setEditingTrip(trip || (activeTrip.id ? activeTrip : null));
+    setEditingTrip(trip || null);
     setIsEditTripModalOpen(true);
   };
 
