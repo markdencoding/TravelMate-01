@@ -295,7 +295,7 @@ export const FullscreenMapModal: React.FC<FullscreenMapModalProps> = ({
               </form>
 
               {/* Category Filter Chips */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+              <div className="flex flex-wrap items-center gap-1.5 py-0.5">
                 <button
                   onClick={() => onChangeCategory('all')}
                   type="button"

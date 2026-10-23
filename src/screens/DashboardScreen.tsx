@@ -126,15 +126,15 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
         </div>
       </div>
 
-      {/* Key Stat Cards: Horizontal snap-scroll on mobile, 3-column grid on desktop/tablet */}
-      <div className="flex md:grid md:grid-cols-3 gap-3 sm:gap-space-md overflow-x-auto md:overflow-x-visible snap-x snap-mandatory no-scrollbar pb-1 md:pb-0">
+      {/* Key Stat Cards: Vertically stacked on mobile, 3-column grid on desktop/tablet */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-space-md w-full">
         {/* Stat 1: Upcoming Trips */}
         <div
           onClick={() => {
             setActiveTab('trips');
             router.push('/trips');
           }}
-          className="min-w-[80vw] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-2xl p-4 sm:p-space-md shadow-xs flex flex-col justify-between gap-space-sm relative overflow-hidden group hover:shadow-md transition-shadow cursor-pointer border border-surface-container-high/40"
+          className="w-full bg-surface-container-lowest rounded-2xl p-4 sm:p-space-md shadow-xs flex flex-col justify-between gap-space-sm relative overflow-hidden group hover:shadow-md transition-shadow cursor-pointer border border-surface-container-high/40"
         >
           <div className="flex items-start justify-between">
             <div className="flex flex-col">
@@ -173,7 +173,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
             setActiveTab('expenses');
             router.push('/expenses');
           }}
-          className="min-w-[80vw] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-2xl p-4 sm:p-space-md shadow-xs flex flex-col justify-between gap-space-sm relative group hover:shadow-md transition-shadow cursor-pointer border border-surface-container-high/40"
+          className="w-full bg-surface-container-lowest rounded-2xl p-4 sm:p-space-md shadow-xs flex flex-col justify-between gap-space-sm relative group hover:shadow-md transition-shadow cursor-pointer border border-surface-container-high/40"
         >
           <div className="flex items-start justify-between">
             <div className="flex flex-col">
@@ -217,7 +217,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
             setActiveTab('calendar');
             router.push('/calendar');
           }}
-          className="min-w-[80vw] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-2xl p-4 sm:p-space-md shadow-xs flex flex-col justify-between gap-space-sm relative group hover:shadow-md transition-shadow cursor-pointer border border-surface-container-high/40"
+          className="w-full bg-surface-container-lowest rounded-2xl p-4 sm:p-space-md shadow-xs flex flex-col justify-between gap-space-sm relative group hover:shadow-md transition-shadow cursor-pointer border border-surface-container-high/40"
         >
           <div className="flex items-start justify-between">
             <div className="flex flex-col">

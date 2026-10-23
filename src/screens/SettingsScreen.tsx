@@ -128,7 +128,7 @@ export const SettingsScreen: React.FC = () => {
       </div>
 
       {/* Sub-tab Navigation */}
-      <div className="flex border-b border-slate-200 gap-6 text-xs font-semibold text-slate-500">
+      <div className="flex flex-wrap border-b border-slate-200 dark:border-slate-800 gap-x-6 gap-y-2 text-xs font-semibold text-slate-500">
         <button
           onClick={() => setActiveSubTab('general')}
           className={`pb-3 flex items-center gap-1.5 transition-all ${

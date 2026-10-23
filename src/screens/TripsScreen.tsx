@@ -189,9 +189,9 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
         </div>
       </div>
 
-      {/* Comprehensive Planning Analytics Strip: Snap-scroll on mobile, 2-col on md, 4-col on lg */}
-      <div className="flex md:grid md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-space-md overflow-x-auto md:overflow-x-visible snap-x snap-mandatory no-scrollbar pb-2 md:pb-0">
-        <div className="min-w-[78%] sm:min-w-[220px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest p-3.5 sm:p-space-md rounded-2xl sm:rounded-xl shadow-xs sm:shadow-sm flex flex-col justify-between border border-surface-container-high/40">
+      {/* Comprehensive Planning Analytics Strip: 2-col on mobile, 4-col on lg */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-space-md w-full">
+        <div className="w-full bg-surface-container-lowest p-3 sm:p-space-md rounded-2xl sm:rounded-xl shadow-xs sm:shadow-sm flex flex-col justify-between border border-surface-container-high/40">
           <div className="flex items-center justify-between text-on-surface-variant font-caption text-caption">
             <span className="font-badge uppercase tracking-wider text-badge font-bold">
               Scheduled Days
@@ -208,7 +208,7 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
           </div>
         </div>
 
-        <div className="min-w-[78%] sm:min-w-[220px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest p-3.5 sm:p-space-md rounded-2xl sm:rounded-xl shadow-xs sm:shadow-sm flex flex-col justify-between border border-surface-container-high/40">
+        <div className="w-full bg-surface-container-lowest p-3 sm:p-space-md rounded-2xl sm:rounded-xl shadow-xs sm:shadow-sm flex flex-col justify-between border border-surface-container-high/40">
           <div className="flex items-center justify-between text-on-surface-variant font-caption text-caption">
             <span className="font-badge uppercase tracking-wider text-badge font-bold">Active Log</span>
             <span className="material-symbols-outlined text-secondary text-[18px]">near_me</span>
@@ -231,7 +231,7 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
           </div>
         </div>
 
-        <div className="min-w-[78%] sm:min-w-[220px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest p-3.5 sm:p-space-md rounded-2xl sm:rounded-xl shadow-xs sm:shadow-sm flex flex-col justify-between border border-surface-container-high/40">
+        <div className="w-full bg-surface-container-lowest p-3 sm:p-space-md rounded-2xl sm:rounded-xl shadow-xs sm:shadow-sm flex flex-col justify-between border border-surface-container-high/40">
           <div className="flex items-center justify-between text-on-surface-variant font-caption text-caption">
             <span className="font-badge uppercase tracking-wider text-badge font-bold">
               Planned Waypoints
@@ -248,7 +248,7 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
           </div>
         </div>
 
-        <div className="min-w-[78%] sm:min-w-[220px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest p-3.5 sm:p-space-md rounded-2xl sm:rounded-xl shadow-xs sm:shadow-sm flex flex-col justify-between border border-surface-container-high/40">
+        <div className="w-full bg-surface-container-lowest p-3 sm:p-space-md rounded-2xl sm:rounded-xl shadow-xs sm:shadow-sm flex flex-col justify-between border border-surface-container-high/40">
           <div className="flex items-center justify-between text-on-surface-variant font-caption text-caption">
             <span className="font-badge uppercase tracking-wider text-badge font-bold">
               Forecast Budget
@@ -290,27 +290,27 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
           </div>
 
           {/* Sorting & View Modes */}
-          <div className="flex items-center gap-space-sm flex-wrap sm:flex-nowrap justify-between lg:justify-end">
+          <div className="flex flex-wrap items-center gap-2 justify-between lg:justify-end w-full lg:w-auto">
             {/* Sort Control */}
-            <div className="flex items-center gap-2 bg-surface px-3 py-2 rounded-lg text-on-surface">
-              <span className="material-symbols-outlined text-[18px] text-on-surface-variant">sort</span>
-              <label className="font-caption text-caption text-on-surface-variant hidden sm:inline">
+            <div className="flex items-center gap-1.5 sm:gap-2 bg-surface px-2.5 sm:px-3 py-2 rounded-lg text-on-surface flex-1 sm:flex-initial min-w-0 max-w-full">
+              <span className="material-symbols-outlined text-[18px] text-on-surface-variant shrink-0">sort</span>
+              <label className="font-caption text-caption text-on-surface-variant hidden sm:inline shrink-0">
                 Sort by:
               </label>
               <select
-                className="bg-transparent font-body-medium text-small text-on-surface focus:outline-none cursor-pointer"
+                className="bg-transparent font-body-medium text-xs sm:text-small text-on-surface focus:outline-none cursor-pointer truncate max-w-[170px] sm:max-w-none"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
               >
-                <option value="departure-soonest">Departure Date (Soonest first)</option>
-                <option value="departure-latest">Departure Date (Latest first)</option>
+                <option value="departure-soonest">Departure (Soonest)</option>
+                <option value="departure-latest">Departure (Latest)</option>
                 <option value="budget-high">Budget (High to Low)</option>
                 <option value="duration">Duration (Longest)</option>
               </select>
             </div>
 
             {/* View Mode Toggle */}
-            <div className="flex items-center bg-surface p-1 rounded-lg">
+            <div className="flex items-center bg-surface p-1 rounded-lg shrink-0">
               <button
                 onClick={() => setViewMode('grid')}
                 className={`p-1.5 rounded-md flex items-center justify-center transition-all cursor-pointer ${
@@ -352,8 +352,8 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
         </div>
 
         {/* Filter Pills */}
-        <div className="flex items-center justify-between gap-space-sm overflow-x-auto pb-1 border-t border-surface-container-high/40 pt-2">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-surface-container-high/40 pt-2">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
             <button
               type="button"
               onClick={() => setStatusFilter('all')}

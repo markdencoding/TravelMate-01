@@ -136,8 +136,81 @@ export const AdminScreen: React.FC = () => {
           </div>
         </div>
 
-        {/* User Table */}
-        <div className="overflow-x-auto">
+        {/* Mobile User Card View */}
+        <div className="block md:hidden space-y-3 p-4">
+          {filteredUsers.map((u) => {
+            const avatarSource =
+              u.avatar ||
+              u.avatarUrl ||
+              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80';
+            const isActive = u.status.toLowerCase() === 'active';
+
+            return (
+              <div
+                key={u.id}
+                className="p-3.5 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2.5"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <img
+                      src={avatarSource}
+                      alt={u.name}
+                      className="w-9 h-9 rounded-full object-cover border border-slate-200 dark:border-slate-700 shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <div className="font-bold text-xs text-slate-900 dark:text-slate-100 truncate">{u.name}</div>
+                      <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono truncate">{u.email}</div>
+                    </div>
+                  </div>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold capitalize shrink-0 ${
+                      isActive
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                    }`}
+                  >
+                    {u.status}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-700">
+                  <select
+                    value={u.role}
+                    onChange={(e) =>
+                      updateAdminUserRole(
+                        u.id,
+                        e.target.value as AdminUserRecord['role']
+                      )
+                    }
+                    className="px-2.5 py-1 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-200 capitalize focus:outline-none"
+                  >
+                    <option value="admin">Admin</option>
+                    <option value="editor">Editor</option>
+                    <option value="viewer">Viewer</option>
+                    <option value="CURATOR / ADMIN">Curator / Admin</option>
+                    <option value="EXPLORER">Explorer</option>
+                  </select>
+
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-[10px] text-slate-400">
+                      {u.lastActive}
+                    </span>
+                    <button
+                      onClick={() => deleteAdminUser(idCleaner(u.id))}
+                      className="p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-slate-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                      title="Revoke access"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-800 text-slate-500 dark:text-slate-400 uppercase tracking-wider text-[10px] font-bold">
               <tr>

@@ -253,7 +253,7 @@ export const WeatherForecastWidget: React.FC<WeatherForecastWidgetProps> = ({
               <span className="text-[11px] font-normal lowercase">Updated {weatherData.lastUpdated}</span>
             </div>
 
-            <div className="flex sm:grid sm:grid-cols-5 gap-2.5 sm:gap-3 overflow-x-auto no-scrollbar pb-1 snap-x snap-mandatory">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5 sm:gap-3 w-full">
               {weatherData.forecast.map((day, idx) => {
                 const isSelected = selectedDayIndex === idx;
 
@@ -262,7 +262,7 @@ export const WeatherForecastWidget: React.FC<WeatherForecastWidgetProps> = ({
                     key={day.date}
                     type="button"
                     onClick={() => setSelectedDayIndex(idx)}
-                    className={`min-w-[110px] sm:min-w-0 flex-1 snap-start rounded-xl p-3 sm:p-3.5 flex flex-col justify-between items-center text-center transition-all cursor-pointer border ${
+                    className={`w-full last:col-span-2 sm:last:col-span-1 rounded-xl p-3 sm:p-3.5 flex flex-col justify-between items-center text-center transition-all cursor-pointer border ${
                       isSelected
                         ? 'bg-primary/10 border-primary ring-2 ring-primary/30 shadow-sm scale-[1.02]'
                         : 'bg-surface-container-low hover:bg-surface-container border-surface-container-high/40'

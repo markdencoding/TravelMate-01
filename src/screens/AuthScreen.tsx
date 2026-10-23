@@ -10,7 +10,18 @@ import { signInSchema, signUpSchema } from '@/lib/validators/auth';
 export const AuthScreen: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setCurrentUser, darkMode, toggleDarkMode } = useTravelStore();
+  const { setCurrentUser, darkMode, toggleDarkMode, setActiveTab } = useTravelStore();
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setActiveTab('dashboard');
+        router.push('/');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [setActiveTab, router]);
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
@@ -225,10 +236,24 @@ export const AuthScreen: React.FC = () => {
         </div>
 
         {/* Right Form Column (7 cols) */}
-        <div className="md:col-span-7 p-8 sm:p-10 flex flex-col justify-between">
+        <div className="md:col-span-7 p-8 sm:p-10 flex flex-col justify-between relative">
+          {/* Close button */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('dashboard');
+              router.push('/');
+            }}
+            className="absolute top-4 right-4 sm:top-6 sm:right-6 w-9 h-9 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-center z-20"
+            title="Close"
+            aria-label="Close dialog"
+          >
+            <span className="material-symbols-outlined text-[20px]">close</span>
+          </button>
+
           <div>
             {/* Form Mode Tabs */}
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-6">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-6 pr-8">
               <div className="flex gap-4 text-xs font-bold">
                 <button
                   type="button"
@@ -380,6 +405,20 @@ export const AuthScreen: React.FC = () => {
                     : 'Create Account'}
                 </span>
               </button>
+
+              {/* Dismiss / Continue browsing without signing in */}
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('dashboard');
+                    router.push('/');
+                  }}
+                  className="text-xs text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-primary font-medium transition-colors cursor-pointer hover:underline"
+                >
+                  Close &amp; continue browsing without signing in
+                </button>
+              </div>
             </form>
           </div>
         </div>

@@ -362,9 +362,9 @@ export const ExpensesScreen: React.FC = () => {
         <>
           {/* Top Metrics Row: Sticky summary card at the top on mobile */}
           <div className="flex flex-col gap-space-md sticky top-14 md:static z-20 bg-white/95 dark:bg-slate-900/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none py-2 md:py-0 border-b md:border-b-0 border-slate-200/80 dark:border-slate-800 transition-colors">
-            <div className="flex md:grid md:grid-cols-3 gap-3 sm:gap-space-md overflow-x-auto md:overflow-x-visible snap-x snap-mandatory no-scrollbar pb-1 md:pb-0">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-space-md w-full">
           {/* Metric Card 1: Budget Target */}
-          <div className="min-w-[80%] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-2xl sm:rounded-xl p-3.5 sm:p-space-md shadow-xs sm:shadow-sm flex flex-col justify-between border border-surface-container-high/40">
+          <div className="w-full bg-surface-container-lowest rounded-2xl sm:rounded-xl p-3.5 sm:p-space-md shadow-xs sm:shadow-sm flex flex-col justify-between border border-surface-container-high/40">
             <div className="flex items-center justify-between">
               <span className="font-caption text-caption uppercase tracking-wider text-on-surface-variant font-bold">
                 Total Target Budget
@@ -391,7 +391,7 @@ export const ExpensesScreen: React.FC = () => {
           </div>
 
           {/* Metric Card 2: Estimated Spent */}
-          <div className="min-w-[80%] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink bg-surface-container-lowest rounded-2xl sm:rounded-xl p-3.5 sm:p-space-md shadow-xs sm:shadow-sm flex flex-col justify-between border border-surface-container-high/40">
+          <div className="w-full bg-surface-container-lowest rounded-2xl sm:rounded-xl p-3.5 sm:p-space-md shadow-xs sm:shadow-sm flex flex-col justify-between border border-surface-container-high/40">
             <div className="flex items-center justify-between">
               <span className="font-caption text-caption uppercase tracking-wider text-on-surface-variant font-bold">
                 Calculated Planned Total
@@ -419,7 +419,7 @@ export const ExpensesScreen: React.FC = () => {
 
           {/* Metric Card 3: Budget Variance Card */}
           <div
-            className={`min-w-[80%] sm:min-w-[280px] md:min-w-0 snap-start shrink-0 md:shrink rounded-2xl sm:rounded-xl p-3.5 sm:p-space-md shadow-xs sm:shadow-sm flex flex-col justify-between border ${
+            className={`w-full rounded-2xl sm:rounded-xl p-3.5 sm:p-space-md shadow-xs sm:shadow-sm flex flex-col justify-between border ${
               isOverBudget
                 ? 'bg-error-container text-on-error-container border-error/20'
                 : 'bg-surface-container-lowest text-on-surface border-surface-container-high/40'
@@ -639,7 +639,7 @@ export const ExpensesScreen: React.FC = () => {
         <div className="xl:col-span-8 bg-surface-container-lowest rounded-2xl sm:rounded-xl p-3.5 sm:p-space-md shadow-xs sm:shadow-sm flex flex-col gap-3 sm:gap-space-md border border-surface-container-high/40">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-space-sm pb-space-xs">
             {/* Filter Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+            <div className="flex flex-wrap items-center gap-1.5 pb-1 md:pb-0">
               <button
                 type="button"
                 onClick={() => setCategoryFilter('all')}

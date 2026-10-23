@@ -45,9 +45,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, isMobileDrawer = fals
 
   return (
     <aside
-      className={`no-print h-full flex flex-col justify-between p-3.5 border-r transition-all duration-300 select-none bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-100 shadow-xs ${
+      className={`no-print h-full flex flex-col justify-between p-3.5 border-r transition-all duration-300 select-none bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 text-slate-800 dark:text-slate-100 shadow-xs overflow-x-hidden ${
         isMobileDrawer
-          ? 'w-full border-r-0'
+          ? 'w-full border-r-0 overflow-y-auto'
           : showCollapsed
           ? 'w-20 items-center'
           : 'w-64'

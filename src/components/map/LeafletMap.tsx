@@ -167,12 +167,12 @@ export const LeafletMap: React.FC<LeafletMapProps> = ({
         minZoom={2}
         maxZoom={18}
         zoomControl={false}
-        attributionControl={true}
+        attributionControl={false}
         className="w-full h-full z-0"
         scrollWheelZoom={true}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
+          attribution=""
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           maxZoom={19}
         />

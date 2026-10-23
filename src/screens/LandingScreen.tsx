@@ -122,8 +122,9 @@ export const LandingScreen: React.FC = () => {
 
   // Auth Modal State (open if on /login or requested via URL query)
   const isDirectLoginRoute = pathname === '/login';
+  const [isDismissed, setIsDismissed] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(
-    isDirectLoginRoute || searchParams.get('auth') !== null || searchParams.get('reason') !== null
+    !isDismissed && (isDirectLoginRoute || searchParams.get('auth') !== null || searchParams.get('reason') !== null)
   );
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
@@ -150,28 +151,49 @@ export const LandingScreen: React.FC = () => {
 
   const activeDest = SAMPLE_DESTINATIONS.find((d) => d.id === selectedDestId) || SAMPLE_DESTINATIONS[0];
 
+  const handleOpenAuthModal = (mode: 'signin' | 'signup') => {
+    setAuthMode(mode);
+    setAuthErrorMessage(null);
+    setIsDismissed(false);
+    setIsAuthModalOpen(true);
+  };
+
+  const handleCloseAuthModal = React.useCallback(() => {
+    setIsDismissed(true);
+    setIsAuthModalOpen(false);
+    setAuthErrorMessage(null);
+    try {
+      if (typeof window !== 'undefined') {
+        window.history.replaceState(null, '', '/');
+      }
+    } catch {}
+    if (pathname === '/login' || searchParams.get('reason') || searchParams.get('auth')) {
+      router.replace('/');
+    }
+  }, [pathname, searchParams, router]);
+
   // Close modal on Escape key press
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !isDirectLoginRoute) {
-        setIsAuthModalOpen(false);
+      if (e.key === 'Escape') {
+        handleCloseAuthModal();
       }
     };
     if (isAuthModalOpen) {
       window.addEventListener('keydown', handleKeyDown);
     }
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isAuthModalOpen, isDirectLoginRoute]);
+  }, [isAuthModalOpen, handleCloseAuthModal]);
 
   // Handle idle logout query param
   useEffect(() => {
     const reason = searchParams.get('reason');
-    if (reason === 'idle') {
+    if (reason === 'idle' && !isDismissed) {
       setAuthErrorMessage('You have been signed out due to inactivity.');
       setIsAuthModalOpen(true);
       setAuthMode('signin');
     }
-  }, [searchParams]);
+  }, [searchParams, isDismissed]);
 
   // Auth submission handler
   const handleAuthSubmit = async (e: React.FormEvent) => {
@@ -424,11 +446,7 @@ export const LandingScreen: React.FC = () => {
             {/* Sign In Trigger Button */}
             <button
               type="button"
-              onClick={() => {
-                setAuthMode('signin');
-                setAuthErrorMessage(null);
-                setIsAuthModalOpen(true);
-              }}
+              onClick={() => handleOpenAuthModal('signin')}
               className="px-3.5 py-2 text-xs font-bold text-on-surface hover:text-primary rounded-xl transition-colors cursor-pointer"
             >
               Sign In
@@ -437,11 +455,7 @@ export const LandingScreen: React.FC = () => {
             {/* Create Account Trigger Button */}
             <button
               type="button"
-              onClick={() => {
-                setAuthMode('signup');
-                setAuthErrorMessage(null);
-                setIsAuthModalOpen(true);
-              }}
+              onClick={() => handleOpenAuthModal('signup')}
               className="px-4 py-2 text-xs font-bold bg-primary hover:bg-primary-container text-on-primary rounded-xl shadow-xs transition-colors cursor-pointer"
             >
               Create Account
@@ -467,18 +481,14 @@ export const LandingScreen: React.FC = () => {
               </h1>
 
               <p className="text-sm sm:text-base text-on-surface-variant font-medium leading-relaxed max-w-xl">
-                Day-by-day itineraries, interactive Leaflet route maps, live Open-Meteo weather forecasts, and expense tracking — all formatted in Philippine Pesos (₱).
+                Day-by-day itineraries, interactive route maps, live Open-Meteo weather forecasts, and expense tracking — all formatted in Philippine Pesos (₱).
               </p>
 
               {/* Action Buttons: Open Auth Modal on Click */}
               <div className="flex flex-wrap items-center gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setAuthMode('signup');
-                    setAuthErrorMessage(null);
-                    setIsAuthModalOpen(true);
-                  }}
+                  onClick={() => handleOpenAuthModal('signup')}
                   className="px-5 py-3 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-bold text-xs sm:text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-2 cursor-pointer"
                 >
                   <span>Start Planning Free</span>
@@ -487,11 +497,7 @@ export const LandingScreen: React.FC = () => {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setAuthMode('signin');
-                    setAuthErrorMessage(null);
-                    setIsAuthModalOpen(true);
-                  }}
+                  onClick={() => handleOpenAuthModal('signin')}
                   className="px-5 py-3 rounded-xl bg-surface-container-lowest dark:bg-slate-800 border border-surface-container-high dark:border-slate-700 text-on-surface hover:text-primary font-bold text-xs sm:text-sm transition-all cursor-pointer"
                 >
                   <span>Sign In</span>
@@ -591,11 +597,7 @@ export const LandingScreen: React.FC = () => {
                   {/* Card Action */}
                   <button
                     type="button"
-                    onClick={() => {
-                      setAuthMode('signup');
-                      setAuthErrorMessage(null);
-                      setIsAuthModalOpen(true);
-                    }}
+                    onClick={() => handleOpenAuthModal('signup')}
                     className="w-full mt-4 py-2.5 px-4 rounded-xl bg-primary hover:bg-primary-container text-on-primary font-bold text-xs shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <span>Create Your Custom Trip</span>
@@ -617,7 +619,7 @@ export const LandingScreen: React.FC = () => {
               <span>Destination Intelligence</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black font-display tracking-tight text-on-surface">
-              Explore Destinations on Leaflet
+              Explore Destinations
             </h2>
             <p className="text-xs sm:text-sm text-on-surface-variant mt-1">
               Select a location to inspect interactive routes, local attractions, and current coordinates.
@@ -625,7 +627,7 @@ export const LandingScreen: React.FC = () => {
           </div>
 
           {/* Destination Selector Chips */}
-          <div className="w-full sm:w-auto max-w-full flex items-center gap-2 overflow-x-auto no-scrollbar py-1 sm:flex-wrap justify-start sm:justify-end">
+          <div className="w-full sm:w-auto max-w-full flex flex-wrap items-center gap-2 py-1 justify-start sm:justify-end">
             {SAMPLE_DESTINATIONS.map((dest) => {
               const isSelected = dest.id === selectedDestId;
               return (
@@ -875,31 +877,34 @@ export const LandingScreen: React.FC = () => {
           role="dialog"
           aria-modal="true"
           aria-label={authMode === 'signin' ? 'Sign In to TravelMate' : 'Create Free Account'}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              handleCloseAuthModal();
+            }
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto cursor-pointer"
         >
           {/* Backdrop Dismiss Trigger */}
           <div
-            className="fixed inset-0"
-            onClick={() => {
-              if (!isDirectLoginRoute) setIsAuthModalOpen(false);
-            }}
+            className="fixed inset-0 pointer-events-none"
             aria-hidden="true"
           />
 
           {/* Modal Container Card */}
-          <div className="relative w-full max-w-md bg-surface-container-lowest dark:bg-slate-900 rounded-3xl border border-surface-container-high dark:border-slate-800 shadow-2xl p-6 sm:p-8 z-10 animate-in zoom-in-95 duration-200 my-8">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-md bg-surface-container-lowest dark:bg-slate-900 rounded-3xl border border-surface-container-high dark:border-slate-800 shadow-2xl p-6 sm:p-8 z-10 animate-in zoom-in-95 duration-200 my-8 cursor-default"
+          >
             {/* Close Button */}
-            {!isDirectLoginRoute && (
-              <button
-                type="button"
-                onClick={() => setIsAuthModalOpen(false)}
-                className="absolute top-5 right-5 p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                title="Close modal"
-                aria-label="Close dialog"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={handleCloseAuthModal}
+              className="absolute top-4 right-4 sm:top-5 sm:right-5 w-9 h-9 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer flex items-center justify-center z-20 shadow-2xs"
+              title="Close modal"
+              aria-label="Close dialog"
+            >
+              <span className="material-symbols-outlined text-[20px]">close</span>
+            </button>
 
             {/* Mode Switcher Tabs */}
             <div className="flex items-center justify-between border-b border-surface-container-high/60 dark:border-slate-800 pb-3 mb-5 pr-8">
@@ -1075,6 +1080,17 @@ export const LandingScreen: React.FC = () => {
                   {authMode === 'signin'
                     ? "Don't have an account? Create Free Account"
                     : 'Already have an account? Sign In'}
+                </button>
+              </div>
+
+              {/* Dismiss / Continue browsing without signing in */}
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={handleCloseAuthModal}
+                  className="text-xs text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-primary font-medium transition-colors cursor-pointer hover:underline"
+                >
+                  Close &amp; continue browsing without signing in
                 </button>
               </div>
             </form>

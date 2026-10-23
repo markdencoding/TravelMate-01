@@ -164,3 +164,19 @@ body {
     print-color-adjust: exact !important;
   }
 }
+
+/* Hide Leaflet watermark and attribution text overlay so map is completely clean and undisturbed */
+.leaflet-control-attribution,
+.leaflet-container .leaflet-control-attribution,
+.leaflet-bottom.leaflet-right,
+.leaflet-control-container .leaflet-bottom.leaflet-right,
+a[href*="leafletjs.com"],
+.leaflet-control-attribution * {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+}

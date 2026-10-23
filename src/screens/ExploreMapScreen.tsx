@@ -545,7 +545,7 @@ export const ExploreMapScreen: React.FC = () => {
         {/* TRIP CATEGORIES & EXPEDITION SELECTOR ROW */}
         <div className="pt-space-xs pb-space-sm border-t border-surface-container-high/40 flex flex-col gap-2.5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+            <div className="flex flex-wrap items-center gap-2 py-0.5">
               <span className="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider shrink-0 flex items-center gap-1">
                 <span className="material-symbols-outlined text-[15px] text-primary">filter_list</span>
                 <span>Trip Status:</span>
@@ -591,7 +591,7 @@ export const ExploreMapScreen: React.FC = () => {
           </div>
 
           {/* Trip Selection Chips / List */}
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+          <div className="flex flex-wrap items-center gap-2 py-1">
             {matchingTrips.length === 0 ? (
               <div className="flex items-center gap-2 text-xs text-on-surface-variant bg-surface-container-lowest px-3 py-1.5 rounded-xl border border-surface-container-high/40">
                 <span className="material-symbols-outlined text-[16px] text-primary">info</span>
@@ -650,7 +650,7 @@ export const ExploreMapScreen: React.FC = () => {
 
         {/* Category Filter Chips for search places */}
         {hasSearched && places.length > 0 && (
-          <div className="flex items-center gap-2 overflow-x-auto pb-space-sm pt-space-xs no-scrollbar">
+          <div className="flex flex-wrap items-center gap-2 pb-space-sm pt-space-xs">
             <button
               onClick={() => setSelectedCategory('all')}
               className={`h-7 px-3.5 rounded-full font-badge text-badge flex items-center gap-1 shadow-xs whitespace-nowrap cursor-pointer font-bold transition-colors ${
@@ -786,7 +786,7 @@ export const ExploreMapScreen: React.FC = () => {
                     <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider block mb-1.5">
                       Select Destination ({selectedTripDestinations.length}):
                     </span>
-                    <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                    <div className="flex flex-wrap items-center gap-1.5 pb-1">
                       {selectedTripDestinations.map((dest, idx) => {
                         const isDestActive = idx === activeDestIndex;
                         return (

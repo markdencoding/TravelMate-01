@@ -87,7 +87,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           />
 
           {/* Slide-out Drawer Panel */}
-          <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-white dark:bg-slate-900 shadow-2xl z-50 animate-slide-left flex flex-col">
+          <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-white dark:bg-slate-900 shadow-2xl z-50 animate-slide-left flex flex-col overflow-hidden">
             <Sidebar isMobileDrawer onClose={() => setIsMobileMenuOpen(false)} />
           </div>
         </div>
@@ -136,9 +136,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             onOpenTripActions={() => openEditTripModal(activeTrip.id ? activeTrip : undefined)}
           />
 
-          {/* Scrollable Viewport with standard bottom padding (reclaimed full height since bottom nav removed) */}
-          <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-8 bg-slate-50/50 dark:bg-slate-950 transition-colors">
-            <div className="max-w-7xl mx-auto">{children}</div>
+          {/* Scrollable Viewport with standard bottom padding and strict zero horizontal scroll */}
+          <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 lg:p-8 pb-8 bg-slate-50/50 dark:bg-slate-950 transition-colors w-full max-w-full">
+            <div className="max-w-7xl mx-auto w-full overflow-x-hidden">{children}</div>
           </main>
         </div>
       </div>

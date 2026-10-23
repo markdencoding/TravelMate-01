@@ -399,7 +399,7 @@ export const CalendarScreen: React.FC = () => {
             </div>
 
             {/* View Mode & Filters */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="flex bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl border border-slate-200/60 dark:border-slate-700 text-xs font-medium">
                 <button
                   type="button"

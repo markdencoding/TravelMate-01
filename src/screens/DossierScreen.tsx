@@ -542,7 +542,7 @@ ${daysArray
                   className="border border-slate-200 rounded-xl overflow-hidden break-inside-avoid shadow-2xs"
                 >
                   {/* Day Header */}
-                  <div className="bg-slate-100/90 px-4 py-2.5 flex items-center justify-between border-b border-slate-200">
+                  <div className="bg-slate-100/90 px-3 sm:px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-4 border-b border-slate-200">
                     <div className="flex items-center gap-2">
                       <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${accentClasses.badge}`}>
                         DAY {dayNum}
@@ -551,7 +551,7 @@ ${daysArray
                         {dateStr}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 text-xs font-mono text-slate-600">
+                    <div className="flex items-center gap-3 text-xs font-mono text-slate-600 flex-wrap">
                       <span>{dayActs.length} Event{dayActs.length !== 1 ? 's' : ''}</span>
                       <span>•</span>
                       <span className="font-semibold text-slate-800">
@@ -639,7 +639,39 @@ ${daysArray
               </span>
             </div>
 
-            <div className="overflow-x-auto">
+            {/* Mobile Card-Based Financial Ledger */}
+            <div className="block md:hidden space-y-2.5">
+              {expenseCategories.length === 0 ? (
+                <div className="py-4 px-3 text-center text-slate-500 font-medium bg-slate-50 rounded-xl text-xs">
+                  No expenses recorded in ledger yet.
+                </div>
+              ) : (
+                expenseCategories.map((row) => (
+                  <div
+                    key={row.cat}
+                    className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900">{row.cat}</span>
+                      <span className="text-emerald-700 font-bold text-[10px] uppercase">
+                        {row.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-slate-600 font-mono text-[11px]">
+                      <span>{row.count} entries ({row.pct} of budget)</span>
+                      <span className="font-bold text-slate-900">{formatCurrency(row.amt)}</span>
+                    </div>
+                  </div>
+                ))
+              )}
+              <div className="p-3 bg-slate-100 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 flex items-center justify-between">
+                <span>TOTAL TRACKED</span>
+                <span className="font-mono text-sm">{formatCurrency(totalTracked)}</span>
+              </div>
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-xs font-mono">
                 <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase text-[10px]">
                   <tr>
