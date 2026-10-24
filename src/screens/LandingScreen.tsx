@@ -387,7 +387,7 @@ export const LandingScreen: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-surface text-on-surface flex flex-col font-sans transition-colors selection:bg-primary/20 selection:text-primary w-full max-w-full overflow-x-clip">
+    <div className="min-h-screen bg-surface text-on-surface flex flex-col font-sans transition-colors selection:bg-primary/20 selection:text-primary w-full max-w-full overflow-x-hidden">
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 max-w-[calc(100vw-2.5rem)] px-4 py-3 rounded-2xl bg-slate-900 text-white text-xs font-semibold shadow-xl border border-slate-700 flex items-center gap-2 animate-in fade-in slide-in-from-top-3">

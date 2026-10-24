@@ -111,10 +111,12 @@ body {
   font-family: var(--font-body);
   background-color: var(--color-surface);
   color: var(--color-on-surface);
-  overscroll-behavior: none;
   margin: 0;
   padding: 0;
   min-height: 100vh;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
