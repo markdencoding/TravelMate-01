@@ -7,44 +7,44 @@ import { getProfileAction, updateProfileAction } from '@/app/actions/profile';
 
 const AVATAR_OPTIONS = [
   {
-    id: 'backpacker',
-    label: 'Backpacker',
-    url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+    id: 'fox',
+    label: 'Fox Explorer',
+    url: '/avatars/fox-explorer.svg',
   },
   {
-    id: 'alpine',
-    label: 'Alpine Hiker',
-    url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&q=80',
+    id: 'bear',
+    label: 'Bear Trekker',
+    url: '/avatars/bear-trekker.svg',
   },
   {
-    id: 'island',
-    label: 'Island Nomad',
-    url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80',
+    id: 'panda',
+    label: 'Panda Nomad',
+    url: '/avatars/panda-nomad.svg',
   },
   {
-    id: 'urban',
-    label: 'Urban Explorer',
-    url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+    id: 'lion',
+    label: 'Lion Voyager',
+    url: '/avatars/lion-voyager.svg',
   },
   {
-    id: 'photographer',
-    label: 'Photographer',
-    url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80',
+    id: 'koala',
+    label: 'Koala Wanderer',
+    url: '/avatars/koala-wanderer.svg',
   },
   {
-    id: 'guide',
-    label: 'Mountain Guide',
-    url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+    id: 'owl',
+    label: 'Owl Pathfinder',
+    url: '/avatars/owl-pathfinder.svg',
   },
   {
-    id: 'culture',
-    label: 'Culture Seeker',
-    url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80',
+    id: 'rabbit',
+    label: 'Rabbit Backpacker',
+    url: '/avatars/rabbit-backpacker.svg',
   },
   {
-    id: 'roadtripper',
-    label: 'Roadtripper',
-    url: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=200&q=80',
+    id: 'penguin',
+    label: 'Penguin Navigator',
+    url: '/avatars/penguin-navigator.svg',
   },
 ];
 
@@ -276,15 +276,15 @@ export const SettingsScreen: React.FC = () => {
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-left space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1">
-                  <span className="material-symbols-outlined text-[15px] text-primary">face</span>
-                  Select Avatar
+                  <span className="material-symbols-outlined text-[15px] text-primary">pets</span>
+                  Animal Travelers
                 </span>
                 <span className="text-[10px] text-slate-400 font-medium">
-                  {AVATAR_OPTIONS.length} Personas
+                  {AVATAR_OPTIONS.length} Vector Avatars
                 </span>
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                Choose a traveler persona for your profile:
+                Choose a vector animal traveler for your profile:
               </p>
               <div className="grid grid-cols-4 gap-2 pt-1">
                 {AVATAR_OPTIONS.map((avatar) => {

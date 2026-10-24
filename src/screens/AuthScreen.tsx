@@ -93,7 +93,7 @@ export const AuthScreen: React.FC = () => {
             avatar:
               profile?.avatar_url ||
               (data.user.user_metadata?.avatar_url as string) ||
-              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+              '/avatars/fox-explorer.svg',
             role: profile?.role === 'admin' ? 'Lead Curator' : 'Traveler',
           });
         }
@@ -145,7 +145,7 @@ export const AuthScreen: React.FC = () => {
               name: name.trim() || email.trim().split('@')[0],
               email: data.user.email || email.trim(),
               avatar:
-                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
+                '/avatars/fox-explorer.svg',
               role: 'Traveler',
             });
           }

@@ -106,7 +106,7 @@ const SIDEBAR_STORAGE_KEY = 'travelmate_sidebar_collapsed';
 const DEFAULT_CURRENT_USER: CurrentUser = {
   name: 'Traveler',
   email: '',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+  avatar: '/avatars/fox-explorer.svg',
   role: 'Traveler',
 };
 

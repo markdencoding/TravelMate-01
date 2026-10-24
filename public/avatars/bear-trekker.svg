@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-bear" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef3c7"/>
+      <stop offset="100%" stop-color="#fde68a"/>
+    </linearGradient>
+    <linearGradient id="fur-bear" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#92400e"/>
+      <stop offset="100%" stop-color="#78350f"/>
+    </linearGradient>
+  </defs>
+  <!-- Circle Backdrop -->
+  <circle cx="60" cy="60" r="56" fill="url(#bg-bear)"/>
+
+  <!-- Bear Ears -->
+  <circle cx="34" cy="38" r="14" fill="url(#fur-bear)"/>
+  <circle cx="34" cy="38" r="8" fill="#fde68a"/>
+  <circle cx="86" cy="38" r="14" fill="url(#fur-bear)"/>
+  <circle cx="86" cy="38" r="8" fill="#fde68a"/>
+
+  <!-- Head Base -->
+  <circle cx="60" cy="64" r="34" fill="url(#fur-bear)"/>
+
+  <!-- Traveler Beanie (Winter Trekker Hat) -->
+  <path d="M 32 46 C 32 24, 88 24, 88 46 Z" fill="#e11d48"/>
+  <rect x="30" y="44" width="60" height="10" rx="4" fill="#be123c"/>
+  <circle cx="60" cy="22" r="6" fill="#fecdd3"/>
+
+  <!-- Snout / Muzzle -->
+  <ellipse cx="60" cy="74" rx="16" ry="12" fill="#fde68a"/>
+  
+  <!-- Nose & Mouth -->
+  <path d="M 54 69 Q 60 66 66 69 Q 60 75 54 69 Z" fill="#451a03"/>
+  <path d="M 60 73 L 60 78 M 56 77 Q 60 80 64 77" stroke="#451a03" stroke-width="2" stroke-linecap="round" fill="none"/>
+
+  <!-- Eyes -->
+  <circle cx="46" cy="58" r="4" fill="#1e1b4b"/>
+  <circle cx="45" cy="57" r="1.5" fill="#ffffff"/>
+  <circle cx="74" cy="58" r="4" fill="#1e1b4b"/>
+  <circle cx="73" cy="57" r="1.5" fill="#ffffff"/>
+
+  <!-- Cheeks -->
+  <circle cx="39" cy="67" r="4" fill="#fca5a5" opacity="0.6"/>
+  <circle cx="81" cy="67" r="4" fill="#fca5a5" opacity="0.6"/>
+
+  <!-- Backpack Shoulder Straps -->
+  <rect x="36" y="96" width="7" height="18" rx="2" fill="#047857"/>
+  <rect x="77" y="96" width="7" height="18" rx="2" fill="#047857"/>
+</svg>

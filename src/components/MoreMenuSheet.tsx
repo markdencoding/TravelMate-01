@@ -39,7 +39,7 @@ export const MoreMenuSheet: React.FC<MoreMenuSheetProps> = ({
           <img
             src={
               currentUser?.avatar ||
-              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+              '/avatars/fox-explorer.svg'
             }
             alt={currentUser?.name || 'User avatar'}
             className="w-12 h-12 rounded-full object-cover ring-2 ring-teal-500/30"

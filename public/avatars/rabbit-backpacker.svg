@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bg-rabbit" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffe4e6"/>
+      <stop offset="100%" stop-color="#fecdd3"/>
+    </linearGradient>
+    <linearGradient id="fur-rabbit" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a"/>
+      <stop offset="100%" stop-color="#fde047"/>
+    </linearGradient>
+  </defs>
+  <!-- Circle Backdrop -->
+  <circle cx="60" cy="60" r="56" fill="url(#bg-rabbit)"/>
+
+  <!-- Long Bunny Ears -->
+  <!-- Left Ear -->
+  <g transform="rotate(-12 40 35)">
+    <ellipse cx="40" cy="30" rx="9" ry="22" fill="#fffbeb"/>
+    <ellipse cx="40" cy="30" rx="5" ry="16" fill="#fca5a5"/>
+  </g>
+  <!-- Right Ear -->
+  <g transform="rotate(12 80 35)">
+    <ellipse cx="80" cy="30" rx="9" ry="22" fill="#fffbeb"/>
+    <ellipse cx="80" cy="30" rx="5" ry="16" fill="#fca5a5"/>
+  </g>
+
+  <!-- Head Base -->
+  <ellipse cx="60" cy="68" rx="30" ry="26" fill="#fffbeb"/>
+
+  <!-- Explorer Headband / Sweatband -->
+  <path d="M 32 52 Q 60 58 88 52 L 87 58 Q 60 64 33 58 Z" fill="#0284c7"/>
+  <circle cx="60" cy="58" r="3" fill="#38bdf8"/>
+
+  <!-- Eyes -->
+  <ellipse cx="48" cy="66" rx="3.5" ry="4.5" fill="#1e1b4b"/>
+  <circle cx="47" cy="65" r="1.3" fill="#ffffff"/>
+  <ellipse cx="72" cy="66" rx="3.5" ry="4.5" fill="#1e1b4b"/>
+  <circle cx="71" cy="65" r="1.3" fill="#ffffff"/>
+
+  <!-- Cute Nose & Mouth -->
+  <polygon points="57,74 63,74 60,77" fill="#f43f5e"/>
+  <path d="M 60 77 L 60 80 M 56 80 Q 60 83 64 80" stroke="#f43f5e" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+
+  <!-- Whiskers -->
+  <line x1="38" y1="74" x2="48" y2="76" stroke="#94a3b8" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="38" y1="78" x2="48" y2="78" stroke="#94a3b8" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="82" y1="74" x2="72" y2="76" stroke="#94a3b8" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="82" y1="78" x2="72" y2="78" stroke="#94a3b8" stroke-width="1.2" stroke-linecap="round"/>
+
+  <!-- Cheeks -->
+  <circle cx="42" cy="74" r="4" fill="#fda4af" opacity="0.6"/>
+  <circle cx="78" cy="74" r="4" fill="#fda4af" opacity="0.6"/>
+
+  <!-- Hiking Backpack Straps -->
+  <rect x="36" y="94" width="7" height="18" rx="2" fill="#e11d48"/>
+  <rect x="77" y="94" width="7" height="18" rx="2" fill="#e11d48"/>
+</svg>

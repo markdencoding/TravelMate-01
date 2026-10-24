@@ -142,7 +142,7 @@ export const AdminScreen: React.FC = () => {
             const avatarSource =
               u.avatar ||
               u.avatarUrl ||
-              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80';
+              '/avatars/fox-explorer.svg';
             const isActive = u.status.toLowerCase() === 'active';
 
             return (
@@ -226,7 +226,7 @@ export const AdminScreen: React.FC = () => {
                 const avatarSource =
                   u.avatar ||
                   u.avatarUrl ||
-                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80';
+                  '/avatars/fox-explorer.svg';
                 const isActive =
                   u.status.toLowerCase() === 'active';
 

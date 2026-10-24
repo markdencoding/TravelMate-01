@@ -274,7 +274,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, isMobileDrawer = fals
                 className="w-8 h-8 rounded-full object-cover ring-2 ring-slate-200 dark:ring-slate-700 group-hover:ring-primary transition-all"
                 src={
                   currentUser?.avatar ||
-                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+                  '/avatars/fox-explorer.svg'
                 }
               />
             </div>
@@ -289,7 +289,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onClose, isMobileDrawer = fals
                   className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200 dark:ring-slate-700"
                   src={
                     currentUser?.avatar ||
-                    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'
+                    '/avatars/fox-explorer.svg'
                   }
                 />
                 <div className="flex flex-col min-w-0">

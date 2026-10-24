@@ -81,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({ onSearch }) => {
             <img
               alt={`${currentUser?.name || 'User'} avatar`}
               className="w-8 h-8 rounded-full object-cover ring-2 ring-slate-200 dark:ring-slate-700 group-hover:ring-primary transition-all"
-              src={currentUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}
+              src={currentUser?.avatar || '/avatars/fox-explorer.svg'}
             />
             <div className="hidden lg:flex flex-col text-left">
               <span className="text-xs font-bold text-slate-900 dark:text-slate-100 group-hover:text-primary transition-colors leading-tight">
