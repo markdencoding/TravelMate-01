@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="tm-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0d9488"/>
+      <stop offset="60%" stop-color="#0f766e"/>
+      <stop offset="100%" stop-color="#042f2e"/>
+    </linearGradient>
+    <linearGradient id="tm-needle-n" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+    <linearGradient id="tm-needle-e" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="100%" stop-color="#cbd5e1"/>
+    </linearGradient>
+    <filter id="tm-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Background squircle -->
+  <rect width="64" height="64" rx="16" fill="url(#tm-bg)"/>
+  <rect width="62" height="62" x="1" y="1" rx="15" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>
+
+  <!-- Orbiting latitude ring for travel architecture -->
+  <ellipse cx="32" cy="32" rx="22" ry="9" fill="none" stroke="rgba(56, 189, 248, 0.4)" stroke-width="1.2" transform="rotate(-28 32 32)"/>
+  <circle cx="32" cy="32" rx="21" ry="21" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1" stroke-dasharray="2 3"/>
+
+  <!-- Compass dial marks -->
+  <circle cx="32" cy="11" r="1.2" fill="#38bdf8"/>
+  <circle cx="53" cy="32" r="1.2" fill="#ffffff" opacity="0.8"/>
+  <circle cx="32" cy="53" r="1.2" fill="#ffffff" opacity="0.8"/>
+  <circle cx="11" cy="32" r="1.2" fill="#ffffff" opacity="0.8"/>
+
+  <!-- Compass Rose -->
+  <g filter="url(#tm-shadow)">
+    <!-- North Needle (Dual-tone cyan/sky) -->
+    <path d="M 32 14 L 32 32 L 27.5 32 Z" fill="#38bdf8"/>
+    <path d="M 32 14 L 36.5 32 L 32 32 Z" fill="#0284c7"/>
+
+    <!-- South Needle (Slate) -->
+    <path d="M 32 50 L 32 32 L 27.5 32 Z" fill="#64748b"/>
+    <path d="M 32 50 L 36.5 32 L 32 32 Z" fill="#94a3b8"/>
+
+    <!-- East Needle (White / light silver) -->
+    <path d="M 50 32 L 32 32 L 32 27.5 Z" fill="#ffffff"/>
+    <path d="M 50 32 L 32 36.5 L 32 32 Z" fill="#cbd5e1"/>
+
+    <!-- West Needle (Silver / cool grey) -->
+    <path d="M 14 32 L 32 27.5 L 32 32 Z" fill="#e2e8f0"/>
+    <path d="M 14 32 L 32 32 L 32 36.5 Z" fill="#94a3b8"/>
+
+    <!-- Center Hub -->
+    <circle cx="32" cy="32" r="5" fill="#0f766e" stroke="#ffffff" stroke-width="2"/>
+    <circle cx="32" cy="32" r="2.2" fill="#38bdf8"/>
+  </g>
+</svg>

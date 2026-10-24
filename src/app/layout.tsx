@@ -18,6 +18,16 @@ export const metadata: Metadata = {
   title: 'TravelMate - Curated Trip Architecture',
   description:
     'Curated trip architecture, visual day-by-day itineraries, smart budgeting, and printable travel dossiers.',
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    shortcut: '/favicon.svg',
+    apple: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+  },
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -37,6 +47,9 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+        <link rel="alternate icon" href="/favicon.ico" sizes="any" />
+        <link rel="apple-touch-icon" href="/favicon.svg" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -53,7 +66,7 @@ export default function RootLayout({
             __html: `
               (function() {
                 try {
-                  var allowed = { 'travelmate_theme': 1, 'travelmate_sidebar_collapsed': 1, 'travelmate_last_activity': 1, 'travelmate_last_active_time': 1 };
+                  var allowed = { 'travelmate_theme': 1, 'travelmate_sidebar_collapsed': 1, 'travelmate_last_activity': 1, 'travelmate_last_active_time': 1, 'travelmate_avatar': 1 };
                   for (var i = localStorage.length - 1; i >= 0; i--) {
                     var k = localStorage.key(i);
                     if (k && k.indexOf('travelmate_') === 0 && !allowed[k]) {
