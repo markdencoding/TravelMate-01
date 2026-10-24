@@ -302,40 +302,43 @@ export const CurrencyConverter: React.FC<CurrencyConverterProps> = ({
       </div>
 
       {/* Sub-Tabs: Converter / Pocket Cheat Sheet / Card FX Info */}
-      <div className="flex items-center justify-between gap-2 pt-3">
-        <div className="flex items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-semibold">
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-3">
+        <div className="flex flex-wrap items-center gap-1 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs font-semibold w-full sm:w-auto">
           <button
             type="button"
             onClick={() => setActiveTab('converter')}
-            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
+            className={`flex-1 sm:flex-initial text-center px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
               activeTab === 'converter'
                 ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            Interactive Converter
+            <span className="sm:hidden">Converter</span>
+            <span className="hidden sm:inline">Interactive Converter</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('cheatsheet')}
-            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
+            className={`flex-1 sm:flex-initial text-center px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
               activeTab === 'cheatsheet'
                 ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            Pocket Cheat Sheet
+            <span className="sm:hidden">Cheat Sheet</span>
+            <span className="hidden sm:inline">Pocket Cheat Sheet</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('fx-info')}
-            className={`px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
+            className={`flex-1 sm:flex-initial text-center px-3 py-1.5 rounded-md transition-colors cursor-pointer ${
               activeTab === 'fx-info'
                 ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
             }`}
           >
-            Card Fee Simulator
+            <span className="sm:hidden">Card Fees</span>
+            <span className="hidden sm:inline">Card Fee Simulator</span>
           </button>
         </div>
 

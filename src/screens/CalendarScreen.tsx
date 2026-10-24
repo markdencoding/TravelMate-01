@@ -371,7 +371,7 @@ export const CalendarScreen: React.FC = () => {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
             {/* Month & Nav Buttons */}
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 tracking-tight font-display min-w-[160px]">
+              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 tracking-tight font-display min-w-0 sm:min-w-[140px] truncate">
                 {monthName}
               </h2>
               <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-lg border border-slate-200/60 dark:border-slate-700">

@@ -360,8 +360,8 @@ export const ExpensesScreen: React.FC = () => {
         </div>
       ) : (
         <>
-          {/* Top Metrics Row: Sticky summary card at the top on mobile */}
-          <div className="flex flex-col gap-space-md sticky top-14 md:static z-20 bg-white/95 dark:bg-slate-900/95 md:bg-transparent backdrop-blur-md md:backdrop-blur-none py-2 md:py-0 border-b md:border-b-0 border-slate-200/80 dark:border-slate-800 transition-colors">
+          {/* Top Metrics Row: Summary cards */}
+          <div className="flex flex-col gap-space-md w-full">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-space-md w-full">
           {/* Metric Card 1: Budget Target */}
           <div className="w-full bg-surface-container-lowest rounded-2xl sm:rounded-xl p-3.5 sm:p-space-md shadow-xs sm:shadow-sm flex flex-col justify-between border border-surface-container-high/40">
@@ -786,7 +786,7 @@ export const ExpensesScreen: React.FC = () => {
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={() => alert(`Editing item: ${exp.title}`)}
+                        onClick={() => handleEditExpense(exp)}
                         className="p-1.5 rounded-lg hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
                         title="Edit expense"
                       >
@@ -921,7 +921,7 @@ export const ExpensesScreen: React.FC = () => {
         {/* Embedded 'Add Expense' Panel */}
         <div
           id="addExpensePanel"
-          className="xl:col-span-4 bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-md sticky top-20 border border-surface-container-high/40"
+          className="xl:col-span-4 bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-md xl:sticky xl:top-20 border border-surface-container-high/40"
         >
           <div className="flex items-center justify-between pb-space-xs border-b border-surface-container-high/30">
             <div className="flex items-center gap-2">

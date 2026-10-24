@@ -203,7 +203,7 @@ export const ExpenseDonutChart: React.FC<ExpenseDonutChartProps> = ({
   return (
     <div className="flex flex-col gap-4">
       {/* Chart Top Header & Selection status */}
-      <div className="flex items-center justify-between pb-3 border-b border-surface-container-high/40">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-surface-container-high/40">
         <div>
           <h2 className="font-section-title text-section-title text-on-surface font-bold">
             Category Spending Distribution
@@ -213,7 +213,7 @@ export const ExpenseDonutChart: React.FC<ExpenseDonutChartProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {selectedCategory !== 'all' && (
             <button
               onClick={() => onSelectCategory && onSelectCategory('all')}
@@ -405,20 +405,20 @@ export const ExpenseDonutChart: React.FC<ExpenseDonutChartProps> = ({
       </div>
 
       {/* Quick Interactive Tooltip / Guidance */}
-      <div className="flex items-center justify-between text-[11px] text-on-surface-variant bg-surface-container-low px-3 py-2 rounded-xl border border-surface-container-high/30">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 text-[11px] text-on-surface-variant bg-surface-container-low px-3 py-2 rounded-xl border border-surface-container-high/30">
         <div className="flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-[14px] text-primary">touch_app</span>
+          <span className="material-symbols-outlined text-[14px] text-primary shrink-0">touch_app</span>
           <span>Tap any segment or legend row to filter the expense ledger below.</span>
         </div>
         {selectedCategory !== 'all' ? (
           <button
             onClick={() => onSelectCategory && onSelectCategory('all')}
-            className="text-primary font-bold hover:underline cursor-pointer"
+            className="text-primary font-bold hover:underline cursor-pointer self-start sm:self-auto"
           >
             Clear Filter
           </button>
         ) : (
-          <span className="font-mono">Showing all categories</span>
+          <span className="font-mono text-[10px] text-on-surface-variant/80">Showing all categories</span>
         )}
       </div>
     </div>

@@ -5,6 +5,49 @@ import { useTravelStore } from '../store';
 import { UserPreferences } from '../types';
 import { getProfileAction, updateProfileAction } from '@/app/actions/profile';
 
+const AVATAR_OPTIONS = [
+  {
+    id: 'backpacker',
+    label: 'Backpacker',
+    url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80',
+  },
+  {
+    id: 'alpine',
+    label: 'Alpine Hiker',
+    url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?auto=format&fit=crop&w=200&q=80',
+  },
+  {
+    id: 'island',
+    label: 'Island Nomad',
+    url: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=200&q=80',
+  },
+  {
+    id: 'urban',
+    label: 'Urban Explorer',
+    url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80',
+  },
+  {
+    id: 'photographer',
+    label: 'Photographer',
+    url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=200&q=80',
+  },
+  {
+    id: 'guide',
+    label: 'Mountain Guide',
+    url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80',
+  },
+  {
+    id: 'culture',
+    label: 'Culture Seeker',
+    url: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=200&q=80',
+  },
+  {
+    id: 'roadtripper',
+    label: 'Roadtripper',
+    url: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=200&q=80',
+  },
+];
+
 export const SettingsScreen: React.FC = () => {
   const {
     currentUser,
@@ -25,6 +68,7 @@ export const SettingsScreen: React.FC = () => {
     'general'
   );
   const [saveToast, setSaveToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('Preferences updated and persisted to storage.');
 
   // Form local states for profile
   const [userName, setUserName] = useState(currentUser?.name || '');
@@ -75,8 +119,32 @@ export const SettingsScreen: React.FC = () => {
     } catch (err) {
       console.warn('Profile save fallback to local:', err);
     }
+    setToastMessage('Profile information updated and persisted.');
     setSaveToast(true);
     setTimeout(() => setSaveToast(false), 2500);
+  };
+
+  const handleSelectAvatar = async (url: string) => {
+    // 1. Instant optimistic update in local state
+    setCurrentUser({
+      ...currentUser,
+      avatar: url,
+    });
+    setToastMessage('Profile avatar updated successfully.');
+    setSaveToast(true);
+    setTimeout(() => setSaveToast(false), 2500);
+
+    // 2. Persist to Supabase in background
+    try {
+      const res = await updateProfileAction({
+        avatarUrl: url,
+      });
+      if (res.success && res.data) {
+        setCurrentUser(res.data.user);
+      }
+    } catch (err) {
+      console.warn('Avatar save fallback to local:', err);
+    }
   };
 
   const handleUpdatePref = async (updates: Partial<UserPreferences>) => {
@@ -92,9 +160,10 @@ export const SettingsScreen: React.FC = () => {
     } catch (err) {
       console.warn('Failed to sync preferences to Supabase:', err);
     }
+    setToastMessage('Preferences updated and persisted to storage.');
+    setSaveToast(true);
+    setTimeout(() => setSaveToast(false), 2500);
   };
-
-
 
   return (
     <div className="space-y-6 animate-fade-in max-w-5xl">
@@ -104,7 +173,7 @@ export const SettingsScreen: React.FC = () => {
           <span className="material-symbols-outlined text-emerald-400 text-[18px]">
             check_circle
           </span>
-          <span>Preferences updated and persisted to storage.</span>
+          <span>{toastMessage}</span>
         </div>
       )}
 
@@ -179,14 +248,18 @@ export const SettingsScreen: React.FC = () => {
       {activeSubTab === 'general' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4 text-center">
+            {/* Active Profile Avatar */}
             <div className="relative inline-block mx-auto">
               <img
                 src={currentUser.avatar}
                 alt={currentUser.name}
                 className="w-24 h-24 rounded-full object-cover border-4 border-primary/20 shadow-sm"
               />
-              <span className="absolute bottom-0 right-0 p-1.5 bg-primary text-white rounded-full shadow-xs cursor-pointer hover:bg-primary-dark">
-                <span className="material-symbols-outlined text-[14px]">edit</span>
+              <span
+                className="absolute bottom-0 right-0 p-1.5 bg-primary text-white rounded-full shadow-xs cursor-default"
+                title="Active Profile Avatar"
+              >
+                <span className="material-symbols-outlined text-[14px]">photo_camera</span>
               </span>
             </div>
             <div>
@@ -198,6 +271,55 @@ export const SettingsScreen: React.FC = () => {
                 {currentUser.role}
               </span>
             </div>
+
+            {/* Choose Avatar Selection */}
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-left space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1">
+                  <span className="material-symbols-outlined text-[15px] text-primary">face</span>
+                  Select Avatar
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium">
+                  {AVATAR_OPTIONS.length} Personas
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                Choose a traveler persona for your profile:
+              </p>
+              <div className="grid grid-cols-4 gap-2 pt-1">
+                {AVATAR_OPTIONS.map((avatar) => {
+                  const isSelected = currentUser.avatar === avatar.url;
+                  return (
+                    <button
+                      key={avatar.id}
+                      type="button"
+                      onClick={() => handleSelectAvatar(avatar.url)}
+                      title={`${avatar.label} (Tap to select)`}
+                      className={`relative flex flex-col items-center group p-1 rounded-xl transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-primary/10 ring-2 ring-primary ring-offset-2 ring-offset-white dark:ring-offset-slate-900 scale-105'
+                          : 'hover:bg-slate-100 dark:hover:bg-slate-800 opacity-80 hover:opacity-100'
+                      }`}
+                    >
+                      <img
+                        src={avatar.url}
+                        alt={avatar.label}
+                        className="w-10 h-10 rounded-full object-cover shadow-2xs"
+                      />
+                      <span className="text-[9px] font-medium text-slate-600 dark:text-slate-300 mt-1 truncate max-w-full text-center">
+                        {avatar.label}
+                      </span>
+                      {isSelected && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-primary text-white flex items-center justify-center text-[10px] shadow-xs">
+                          <span className="material-symbols-outlined text-[10px] font-bold">check</span>
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-left space-y-2 text-xs text-slate-600 dark:text-slate-400">
               <div className="flex justify-between">
                 <span>Account Status:</span>
