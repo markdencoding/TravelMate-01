@@ -68,7 +68,7 @@ interface TravelStoreContextType {
 
   // Current User
   currentUser: CurrentUser;
-  setCurrentUser: (user: CurrentUser) => void;
+  setCurrentUser: React.Dispatch<React.SetStateAction<CurrentUser>>;
 
   // Preferences
   preferences: UserPreferences;
@@ -160,6 +160,7 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         SIDEBAR_STORAGE_KEY,
         'travelmate_last_activity',
         'travelmate_last_active_time',
+        'travelmate_avatar',
       ]);
       const keysToRemove: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
@@ -281,7 +282,32 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const [places, setPlaces] = useState<PlacePOI[]>([]);
   const [notifications, setNotifications] = useState<NotificationAlert[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUserRecord[]>([]);
-  const [currentUser, setCurrentUser] = useState<CurrentUser>(DEFAULT_CURRENT_USER);
+  const [currentUser, setCurrentUser] = useState<CurrentUser>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('travelmate_avatar');
+        if (saved) {
+          return { ...DEFAULT_CURRENT_USER, avatar: saved };
+        }
+      } catch {}
+    }
+    return DEFAULT_CURRENT_USER;
+  });
+
+  const handleSetCurrentUser: React.Dispatch<React.SetStateAction<CurrentUser>> = useCallback(
+    (action) => {
+      setCurrentUser((prev) => {
+        const next = typeof action === 'function' ? action(prev) : action;
+        if (typeof window !== 'undefined' && next?.avatar) {
+          try {
+            localStorage.setItem('travelmate_avatar', next.avatar);
+          } catch {}
+        }
+        return next;
+      });
+    },
+    []
+  );
   const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
 
   // Sync current user from real Supabase session & profiles on startup
@@ -302,6 +328,7 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
             .single();
 
           if (isMounted) {
+            const savedAvatar = typeof window !== 'undefined' ? localStorage.getItem('travelmate_avatar') : null;
             setCurrentUser({
               name:
                 profile?.display_name ||
@@ -312,6 +339,7 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
               email: user.email || '',
               avatar:
                 profile?.avatar_url ||
+                savedAvatar ||
                 (user.user_metadata?.avatar_url as string) ||
                 DEFAULT_CURRENT_USER.avatar,
               role: profile?.role === 'admin' ? 'Lead Curator' : 'Traveler',
@@ -576,7 +604,7 @@ export const TravelStoreProvider: React.FC<{ children: React.ReactNode }> = ({ c
         updateAdminUserRole,
         deleteAdminUser,
         currentUser,
-        setCurrentUser,
+        setCurrentUser: handleSetCurrentUser,
         preferences,
         userPreferences: preferences,
         updatePreferences,

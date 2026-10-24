@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useTravelStore } from '../store';
 import { UserPreferences } from '../types';
 import { getProfileAction, updateProfileAction } from '@/app/actions/profile';
+import { createClient } from '@/lib/supabase/client';
 
 const AVATAR_OPTIONS = [
   {
@@ -74,6 +75,8 @@ export const SettingsScreen: React.FC = () => {
   const [userName, setUserName] = useState(currentUser?.name || '');
   const [userEmail, setUserEmail] = useState(currentUser?.email || '');
   const [bio, setBio] = useState('');
+  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  const [customAvatarInput, setCustomAvatarInput] = useState('');
 
   const dataSizeKb = useMemo(() => {
     try {
@@ -91,7 +94,16 @@ export const SettingsScreen: React.FC = () => {
         const res = await getProfileAction();
         if (res.data) {
           if (res.data.user) {
-            setCurrentUser(res.data.user);
+            const savedAvatar = typeof window !== 'undefined' ? localStorage.getItem('travelmate_avatar') : null;
+            const finalAvatar =
+              res.data.user.avatar && res.data.user.avatar !== '/avatars/fox-explorer.svg'
+                ? res.data.user.avatar
+                : (savedAvatar || res.data.user.avatar || '/avatars/fox-explorer.svg');
+
+            setCurrentUser({
+              ...res.data.user,
+              avatar: finalAvatar,
+            });
             setUserName(res.data.user.name);
             setUserEmail(res.data.user.email);
           }
@@ -106,12 +118,77 @@ export const SettingsScreen: React.FC = () => {
     loadProfile();
   }, [setCurrentUser, updateUserPreferences]);
 
+  const handleSelectAvatar = async (url: string) => {
+    if (!url) return;
+    const cleanUrl = url.trim();
+
+    // 1. Instant optimistic update in local state & localStorage
+    setCurrentUser((prev) => ({
+      ...prev,
+      avatar: cleanUrl,
+    }));
+    try {
+      localStorage.setItem('travelmate_avatar', cleanUrl);
+    } catch {}
+
+    setToastMessage('Profile avatar updated successfully.');
+    setSaveToast(true);
+    setTimeout(() => setSaveToast(false), 2500);
+
+    // 2. Direct client-side Supabase update (instant authenticated JWT session)
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('profiles')
+          .update({ avatar_url: cleanUrl })
+          .eq('id', user.id);
+      }
+    } catch (e) {
+      console.warn('Direct client-side avatar update:', e);
+    }
+
+    // 3. Server action persistence
+    try {
+      const res = await updateProfileAction({
+        avatarUrl: cleanUrl,
+      });
+      if (res.success && res.data) {
+        setCurrentUser(res.data.user);
+      }
+    } catch (err) {
+      console.warn('Server action avatar update:', err);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2.5 * 1024 * 1024) {
+      alert('Selected image exceeds 2MB limit. Please select a smaller image file.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      if (dataUrl) {
+        handleSelectAvatar(dataUrl);
+        setIsAvatarModalOpen(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const res = await updateProfileAction({
         displayName: userName,
         bio: bio,
+        avatarUrl: currentUser.avatar,
       });
       if (res.success && res.data) {
         setCurrentUser(res.data.user);
@@ -122,29 +199,6 @@ export const SettingsScreen: React.FC = () => {
     setToastMessage('Profile information updated and persisted.');
     setSaveToast(true);
     setTimeout(() => setSaveToast(false), 2500);
-  };
-
-  const handleSelectAvatar = async (url: string) => {
-    // 1. Instant optimistic update in local state
-    setCurrentUser({
-      ...currentUser,
-      avatar: url,
-    });
-    setToastMessage('Profile avatar updated successfully.');
-    setSaveToast(true);
-    setTimeout(() => setSaveToast(false), 2500);
-
-    // 2. Persist to Supabase in background
-    try {
-      const res = await updateProfileAction({
-        avatarUrl: url,
-      });
-      if (res.success && res.data) {
-        setCurrentUser(res.data.user);
-      }
-    } catch (err) {
-      console.warn('Avatar save fallback to local:', err);
-    }
   };
 
   const handleUpdatePref = async (updates: Partial<UserPreferences>) => {
@@ -248,20 +302,41 @@ export const SettingsScreen: React.FC = () => {
       {activeSubTab === 'general' && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-1 bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4 text-center">
-            {/* Active Profile Avatar */}
-            <div className="relative inline-block mx-auto">
-              <img
-                src={currentUser.avatar}
-                alt={currentUser.name}
-                className="w-24 h-24 rounded-full object-cover border-4 border-primary/20 shadow-sm"
-              />
-              <span
-                className="absolute bottom-0 right-0 p-1.5 bg-primary text-white rounded-full shadow-xs cursor-default"
-                title="Active Profile Avatar"
+            {/* Active Profile Avatar with Click-to-Change */}
+            <div className="flex flex-col items-center">
+              <button
+                type="button"
+                onClick={() => setIsAvatarModalOpen(true)}
+                className="relative group inline-block mx-auto rounded-full cursor-pointer focus:outline-none focus:ring-4 focus:ring-primary/20 transition-transform active:scale-95"
+                title="Click to change your avatar"
+              >
+                <img
+                  src={currentUser.avatar}
+                  alt={currentUser.name}
+                  className="w-24 h-24 rounded-full object-cover border-4 border-primary/20 shadow-sm bg-surface-container-lowest transition-transform group-hover:scale-105"
+                />
+                <div className="absolute inset-0 rounded-full bg-slate-950/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-[10px] font-bold transition-opacity">
+                  <span className="material-symbols-outlined text-[20px]">photo_camera</span>
+                  <span>Change</span>
+                </div>
+                <span
+                  className="absolute bottom-0 right-0 p-1.5 bg-primary text-white rounded-full shadow-xs group-hover:bg-primary-dark transition-colors"
+                  title="Change Avatar"
+                >
+                  <span className="material-symbols-outlined text-[14px]">edit</span>
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsAvatarModalOpen(true)}
+                className="mt-2 px-3 py-1 bg-surface-container hover:bg-surface-container-high text-primary rounded-full text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-all hover:scale-105"
               >
                 <span className="material-symbols-outlined text-[14px]">photo_camera</span>
-              </span>
+                <span>Change Avatar</span>
+              </button>
             </div>
+
             <div>
               <h3 className="font-bold text-slate-900 dark:text-slate-100 font-display text-base">
                 {currentUser.name}
@@ -272,7 +347,7 @@ export const SettingsScreen: React.FC = () => {
               </span>
             </div>
 
-            {/* Choose Avatar Selection */}
+            {/* Quick 1-Tap Vector Animal Travelers Grid */}
             <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-left space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1">
@@ -343,6 +418,33 @@ export const SettingsScreen: React.FC = () => {
               Profile Information
             </h3>
             <form onSubmit={handleSaveProfile} className="space-y-4">
+              {/* Profile Avatar Selection Row in Form */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={currentUser.avatar}
+                    alt="Current avatar preview"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-primary/20 shadow-2xs"
+                  />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900 dark:text-slate-100">
+                      Profile Avatar
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-slate-400">
+                      Choose from 8 animal travelers or upload custom
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsAvatarModalOpen(true)}
+                  className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg text-xs font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[15px]">edit</span>
+                  <span>Select Avatar</span>
+                </button>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -678,7 +780,142 @@ export const SettingsScreen: React.FC = () => {
         </div>
       )}
 
+      {/* Avatar Selection Modal Dialog */}
+      {isAvatarModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-fade-in"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto animate-scale-in">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                  <span className="material-symbols-outlined text-[18px]">pets</span>
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 font-display">
+                    Choose Your Avatar
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Pick a vector animal traveler or upload custom artwork
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAvatarModalOpen(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+              >
+                <span className="material-symbols-outlined text-[18px]">close</span>
+              </button>
+            </div>
 
+            {/* 8 Vector Animal Travelers Grid */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  Vector Animal Travelers
+                </span>
+                <span className="text-[10px] text-primary font-medium">8 Options</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {AVATAR_OPTIONS.map((avatar) => {
+                  const isSelected = currentUser.avatar === avatar.url;
+                  return (
+                    <button
+                      key={avatar.id}
+                      type="button"
+                      onClick={() => {
+                        handleSelectAvatar(avatar.url);
+                        setIsAvatarModalOpen(false);
+                      }}
+                      className={`flex flex-col items-center p-2.5 rounded-xl border transition-all cursor-pointer ${
+                        isSelected
+                          ? 'border-primary bg-primary/10 ring-2 ring-primary ring-offset-2 ring-offset-white dark:ring-offset-slate-900 scale-105'
+                          : 'border-slate-200 dark:border-slate-700 hover:border-primary/50 hover:bg-slate-50 dark:hover:bg-slate-800/60'
+                      }`}
+                    >
+                      <img
+                        src={avatar.url}
+                        alt={avatar.label}
+                        className="w-14 h-14 rounded-full object-cover shadow-2xs"
+                      />
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200 mt-2 text-center">
+                        {avatar.label}
+                      </span>
+                      {isSelected ? (
+                        <span className="mt-1 text-[10px] font-bold text-primary flex items-center gap-0.5">
+                          <span className="material-symbols-outlined text-[12px]">check</span>
+                          Selected
+                        </span>
+                      ) : (
+                        <span className="mt-1 text-[10px] text-slate-400">Select</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Upload from Device or Custom URL */}
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 space-y-3">
+              <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block">
+                Custom Avatar or Upload
+              </span>
+
+              <div className="flex flex-col sm:flex-row gap-2">
+                <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-colors text-xs font-semibold text-slate-700 dark:text-slate-300">
+                  <span className="material-symbols-outlined text-[18px] text-primary">upload_file</span>
+                  <span>Upload from Device (Max 2MB)</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {/* Custom Image URL */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Or paste image URL (https://...)"
+                  value={customAvatarInput}
+                  onChange={(e) => setCustomAvatarInput(e.target.value)}
+                  className="flex-1 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (customAvatarInput.trim()) {
+                      handleSelectAvatar(customAvatarInput.trim());
+                      setCustomAvatarInput('');
+                      setIsAvatarModalOpen(false);
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-primary text-white rounded-xl text-xs font-semibold hover:bg-primary-dark cursor-pointer transition-colors"
+                >
+                  Apply
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsAvatarModalOpen(false)}
+                className="px-4 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-semibold cursor-pointer transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
