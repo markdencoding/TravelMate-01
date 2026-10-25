@@ -5,7 +5,9 @@ import {
   filterAndMapNearbyPlaces,
   GeoapifyPlacesResponse,
   NearbySpotItem,
+  calculateDistanceMeters,
 } from '@/lib/validators/nearby';
+import { CURATED_LOCATIONS } from '@/lib/location-data';
 
 // 1. In-memory cache for nearby spots (TTL: 24 hours)
 interface CachedNearbyResult {
@@ -34,6 +36,38 @@ function checkRateLimit(userKey: string): boolean {
   timestamps.push(now);
   userRequestTimestamps.set(userKey, timestamps);
   return true;
+}
+
+function getCuratedNearbySpots(
+  lat: number,
+  lon: number,
+  radiusMeters: number,
+  existingDestinations: Array<{ name: string; latitude?: number; longitude?: number }>
+): NearbySpotItem[] {
+  const existingLower = new Set(existingDestinations.map((d) => d.name.toLowerCase()));
+
+  const spotsWithDistance = CURATED_LOCATIONS.map((loc) => {
+    const dist = calculateDistanceMeters(lat, lon, loc.latitude, loc.longitude);
+    return { loc, dist };
+  })
+    .filter(({ loc, dist }) => {
+      if (existingLower.has(loc.name.toLowerCase())) return false;
+      return dist <= Math.max(radiusMeters * 2, 80000) && dist > 100;
+    })
+    .sort((a, b) => a.dist - b.dist)
+    .slice(0, 10);
+
+  return spotsWithDistance.map(({ loc, dist }) => ({
+    id: `curated-${loc.id}`,
+    name: loc.name,
+    category: loc.category === 'nature' ? 'park' : loc.category === 'culture' ? 'heritage' : 'tourism',
+    categoryLabel: loc.categoryLabel,
+    latitude: loc.latitude,
+    longitude: loc.longitude,
+    distanceMeters: Math.round(dist),
+    address: loc.secondaryText,
+    description: `Curated highlight in ${loc.country}`,
+  }));
 }
 
 export async function GET(request: NextRequest) {
@@ -138,7 +172,19 @@ export async function GET(request: NextRequest) {
   // 6. Check Geoapify API key (Server-only)
   const apiKey = process.env.GEOAPIFY_API_KEY;
   if (!apiKey || apiKey.trim().length === 0 || apiKey.includes('your-geoapify')) {
-    // Quiet error state when key is missing
+    const fallbackSpots = getCuratedNearbySpots(lat, lon, radius, existingDestinations);
+    if (fallbackSpots.length > 0) {
+      nearbyCache.set(cacheKey, {
+        timestamp: Date.now(),
+        data: fallbackSpots,
+      });
+      return NextResponse.json({
+        spots: fallbackSpots,
+        places: fallbackSpots,
+        cached: false,
+      });
+    }
+
     return NextResponse.json({
       spots: [],
       error: 'Geoapify API key not configured',
@@ -179,6 +225,15 @@ export async function GET(request: NextRequest) {
     clearTimeout(timeoutId);
 
     if (!res.ok) {
+      const fallbackSpots = getCuratedNearbySpots(lat, lon, radius, existingDestinations);
+      if (fallbackSpots.length > 0) {
+        return NextResponse.json({
+          spots: fallbackSpots,
+          places: fallbackSpots,
+          cached: false,
+        });
+      }
+
       if (res.status === 401 || res.status === 403) {
         return NextResponse.json({
           spots: [],
@@ -220,6 +275,15 @@ export async function GET(request: NextRequest) {
       cached: false,
     });
   } catch (err: unknown) {
+    const fallbackSpots = getCuratedNearbySpots(lat, lon, radius, existingDestinations);
+    if (fallbackSpots.length > 0) {
+      return NextResponse.json({
+        spots: fallbackSpots,
+        places: fallbackSpots,
+        cached: false,
+      });
+    }
+
     return NextResponse.json({
       spots: [],
       error: 'Failed to reach Places API',

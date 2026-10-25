@@ -4,6 +4,7 @@ import {
   WikidataBinding,
   parseWikidataRecommendations,
 } from '@/lib/recommendations';
+import { CURATED_LOCATIONS } from '@/lib/location-data';
 
 export const revalidate = 604800; // Cache 7 days on Next.js server
 
@@ -88,7 +89,12 @@ LIMIT 12
     const data: WikidataResponse = await res.json();
     const bindings = data.results?.bindings || [];
 
-    const recommendations = parseWikidataRecommendations(bindings, sanitizedCountry);
+    let recommendations = parseWikidataRecommendations(bindings, sanitizedCountry);
+
+    // If Wikidata returned empty, supplement with curated country locations
+    if (recommendations.length === 0) {
+      recommendations = getCuratedCountryRecommendations(sanitizedCountry);
+    }
 
     inMemoryCache.set(cacheKey, {
       timestamp: Date.now(),
@@ -97,8 +103,22 @@ LIMIT 12
 
     return NextResponse.json({ recommendations });
   } catch (err) {
-    console.warn('Failed to query Wikidata country recommendations:', err);
-    // Silent fallback to empty array
-    return NextResponse.json({ recommendations: [] });
+    console.warn('Failed to query Wikidata country recommendations, using curated fallback:', err);
+    const fallback = getCuratedCountryRecommendations(sanitizedCountry);
+    return NextResponse.json({ recommendations: fallback });
   }
+}
+
+function getCuratedCountryRecommendations(countryName: string): RecommendationItem[] {
+  const cLower = countryName.toLowerCase();
+  return CURATED_LOCATIONS.filter(
+    (loc) => loc.country.toLowerCase() === cLower || loc.country.toLowerCase().includes(cLower)
+  ).map((loc, idx) => ({
+    id: loc.id,
+    name: loc.name,
+    country: loc.country,
+    latitude: loc.latitude,
+    longitude: loc.longitude,
+    sitelinks: 100 - idx,
+  }));
 }

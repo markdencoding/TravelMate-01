@@ -6,6 +6,7 @@ import {
   GeoapifyAutocompleteResponse,
   PlaceSuggestion,
 } from '@/lib/validators/suggestions';
+import { searchCuratedLocations, locationToSuggestion } from '@/lib/location-data';
 
 // 1. In-memory cache for suggestions (TTL: 60 seconds)
 interface CachedSuggestResult {
@@ -16,9 +17,9 @@ interface CachedSuggestResult {
 const CACHE_TTL_MS = 60 * 1000; // 60 seconds
 const suggestCache = new Map<string, CachedSuggestResult>();
 
-// 2. Per-user rate limiter: max 8 requests per 10 seconds
+// 2. Per-user rate limiter: max 12 requests per 10 seconds
 const RATE_LIMIT_WINDOW_MS = 10 * 1000; // 10s
-const MAX_REQUESTS_PER_WINDOW = 8;
+const MAX_REQUESTS_PER_WINDOW = 12;
 const userRequestTimestamps = new Map<string, number[]>();
 
 function checkRateLimit(userIdOrIp: string): boolean {
@@ -37,7 +38,7 @@ function checkRateLimit(userIdOrIp: string): boolean {
 }
 
 export async function GET(request: NextRequest) {
-  // 1. Verify user authentication (signed-in users only)
+  // 1. Verify user authentication (signed-in users only in production)
   let userIdentifier = 'anonymous';
   try {
     const supabase = await createClient();
@@ -103,22 +104,36 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // 5. Check Geoapify API Key configuration
+  // 5. Gather Curated High-Accuracy Location Matches
+  const curatedMatches = searchCuratedLocations(query, 8).map(locationToSuggestion);
+
+  // 6. Check Geoapify API Key configuration
   const apiKey = process.env.GEOAPIFY_API_KEY;
   if (!apiKey || apiKey.trim().length === 0 || apiKey.includes('your-geoapify')) {
+    // Return curated results if available, else informative notice
+    if (curatedMatches.length > 0) {
+      suggestCache.set(cacheKey, {
+        timestamp: Date.now(),
+        data: curatedMatches,
+      });
+      return NextResponse.json({
+        suggestions: curatedMatches,
+        cached: false,
+      });
+    }
+
     return NextResponse.json({
       suggestions: [],
-      error: 'Suggestions unavailable. Press Enter to search',
+      error: 'Press Enter to search all OpenStreetMap places worldwide',
       errorType: 'key_missing',
     });
   }
 
-  // 6. Call upstream Geoapify Address Autocomplete API
+  // 7. Call upstream Geoapify Address Autocomplete API (global + multi-language)
   const url = new URL('https://api.geoapify.com/v1/geocode/autocomplete');
   url.searchParams.set('text', query);
   url.searchParams.set('limit', '10');
   url.searchParams.set('lang', 'en');
-  url.searchParams.set('bias', 'countrycode:ph');
   url.searchParams.set('apiKey', apiKey.trim());
 
   try {
@@ -135,44 +150,58 @@ export async function GET(request: NextRequest) {
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      if (res.status === 401 || res.status === 403) {
+      // Fallback to curated matches if upstream failed
+      if (curatedMatches.length > 0) {
         return NextResponse.json({
-          suggestions: [],
-          error: 'Suggestions unavailable. Press Enter to search',
-          errorType: 'invalid_key',
+          suggestions: curatedMatches,
+          cached: false,
         });
       }
-      if (res.status === 402 || res.status === 429) {
-        return NextResponse.json({
-          suggestions: [],
-          error: 'Suggestions unavailable. Press Enter to search',
-          errorType: 'quota_exceeded',
-        });
-      }
+
       return NextResponse.json({
         suggestions: [],
-        error: 'Suggestions unavailable. Press Enter to search',
+        error: 'Press Enter to search all OpenStreetMap destinations',
         errorType: 'upstream_error',
       });
     }
 
     const data: GeoapifyAutocompleteResponse = await res.json();
-    const suggestions = filterAndMapGeoapifySuggestions(data.features || []);
+    const geoapifySuggestions = filterAndMapGeoapifySuggestions(data.features || []);
+
+    // Merge curated and Geoapify suggestions, deduplicating by name & country
+    const merged: PlaceSuggestion[] = [...curatedMatches];
+    const seen = new Set(curatedMatches.map((c) => `${c.name.toLowerCase()}|${c.country.toLowerCase()}`));
+
+    for (const g of geoapifySuggestions) {
+      const key = `${g.name.toLowerCase()}|${g.country.toLowerCase()}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        merged.push(g);
+      }
+      if (merged.length >= 10) break;
+    }
 
     // Cache successful results
     suggestCache.set(cacheKey, {
       timestamp: Date.now(),
-      data: suggestions,
+      data: merged,
     });
 
     return NextResponse.json({
-      suggestions,
+      suggestions: merged,
       cached: false,
     });
   } catch (err: unknown) {
+    if (curatedMatches.length > 0) {
+      return NextResponse.json({
+        suggestions: curatedMatches,
+        cached: false,
+      });
+    }
+
     return NextResponse.json({
       suggestions: [],
-      error: 'Suggestions unavailable. Press Enter to search',
+      error: 'Press Enter to search all OpenStreetMap destinations',
       errorType: 'upstream_error',
     });
   }

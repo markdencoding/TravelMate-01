@@ -5,6 +5,7 @@ import {
   mapOsmCategory,
   PlaceItem,
 } from '@/lib/validators/places';
+import { searchCuratedLocations, locationToPlaceItem } from '@/lib/location-data';
 
 // In-memory cache for search results (TTL: 1 hour)
 interface CachedSearchResult {
@@ -50,6 +51,8 @@ interface NominatimRawItem {
     tourism?: string;
     amenity?: string;
     historic?: string;
+    natural?: string;
+    attraction?: string;
     [key: string]: string | undefined;
   };
 }
@@ -78,7 +81,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-
   // 2. Validate query parameter
   const searchParams = request.nextUrl.searchParams;
   const rawQ = searchParams.get('q') || '';
@@ -101,6 +103,9 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // Search curated locations first for immediate, high-accuracy matches
+  const curatedMatches: PlaceItem[] = searchCuratedLocations(query, 5).map(locationToPlaceItem);
+
   // 4. Build User-Agent adhering to Nominatim usage policy
   const appName = process.env.NOMINATIM_APP_NAME || 'TravelMate/1.0';
   const contactEmail = process.env.NOMINATIM_CONTACT_EMAIL || 'admin@travelmate.app';
@@ -114,7 +119,7 @@ export async function GET(request: NextRequest) {
     nominatimUrl.searchParams.set('q', query);
     nominatimUrl.searchParams.set('format', 'jsonv2');
     nominatimUrl.searchParams.set('addressdetails', '1');
-    nominatimUrl.searchParams.set('limit', '10');
+    nominatimUrl.searchParams.set('limit', '25'); // Expanded limit for richer results
 
     const res = await fetch(nominatimUrl.toString(), {
       headers: {
@@ -124,6 +129,12 @@ export async function GET(request: NextRequest) {
     });
 
     if (res.status === 429) {
+      if (curatedMatches.length > 0) {
+        return NextResponse.json({
+          places: curatedMatches,
+          cached: false,
+        });
+      }
       return NextResponse.json(
         { error: 'Place search rate limit reached. Please wait a moment and try again.' },
         { status: 429 }
@@ -131,6 +142,12 @@ export async function GET(request: NextRequest) {
     }
 
     if (!res.ok) {
+      if (curatedMatches.length > 0) {
+        return NextResponse.json({
+          places: curatedMatches,
+          cached: false,
+        });
+      }
       return NextResponse.json(
         { error: `Upstream place service returned status ${res.status}` },
         { status: 502 }
@@ -140,7 +157,7 @@ export async function GET(request: NextRequest) {
     const rawData: NominatimRawItem[] = await res.json();
 
     if (!Array.isArray(rawData)) {
-      return NextResponse.json({ places: [] });
+      return NextResponse.json({ places: curatedMatches });
     }
 
     // 5. Trim and normalize results
@@ -151,6 +168,10 @@ export async function GET(request: NextRequest) {
         item.address?.tourism ||
         item.address?.amenity ||
         item.address?.historic ||
+        item.address?.attraction ||
+        item.address?.natural ||
+        item.address?.city ||
+        item.address?.town ||
         item.display_name.split(',')[0].trim();
 
       return {
@@ -167,17 +188,35 @@ export async function GET(request: NextRequest) {
       };
     });
 
+    // Merge curated and Nominatim places, avoiding duplicates
+    const combinedPlaces: PlaceItem[] = [...curatedMatches];
+    const seenNames = new Set(curatedMatches.map((p) => p.name.toLowerCase()));
+
+    for (const p of trimmedPlaces) {
+      if (!seenNames.has(p.name.toLowerCase())) {
+        seenNames.add(p.name.toLowerCase());
+        combinedPlaces.push(p);
+      }
+    }
+
     // Save to cache
     placesCache.set(cacheKey, {
       timestamp: Date.now(),
-      data: trimmedPlaces,
+      data: combinedPlaces,
     });
 
     return NextResponse.json({
-      places: trimmedPlaces,
+      places: combinedPlaces,
       cached: false,
     });
   } catch (err: any) {
+    if (curatedMatches.length > 0) {
+      return NextResponse.json({
+        places: curatedMatches,
+        cached: false,
+      });
+    }
+
     console.error('Nominatim fetch error:', err);
     return NextResponse.json(
       { error: 'Unable to reach place search service. Please check your connection and try again.' },
