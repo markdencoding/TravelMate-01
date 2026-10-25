@@ -95,7 +95,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
             <span className="font-body-medium text-primary font-semibold">Dashboard</span>
           </div>
           <h1 className="font-display text-xl sm:text-2xl lg:text-display font-extrabold text-on-surface tracking-tight">
-            Welcome back, {currentUser?.name?.split(' ')[0] || 'Traveler'}! ✨
+            Welcome back, {currentUser?.name?.split(' ')[0] || 'Traveler'}!
           </h1>
           <p className="font-body text-xs sm:text-body text-on-surface-variant">
             {trips.length > 0

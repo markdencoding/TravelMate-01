@@ -279,7 +279,7 @@ export const WeatherForecastWidget: React.FC<WeatherForecastWidgetProps> = ({
                           {day.dayLabel}
                         </span>
                         {idx === 0 && (
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                         )}
                       </div>
                       <span className="text-[11px] text-on-surface-variant font-mono">

@@ -1106,7 +1106,7 @@ export const ExploreMapScreen: React.FC = () => {
                         <div className="flex items-center justify-between pt-2.5 mt-1 border-t border-surface-container-high/40">
                           {isSelected ? (
                             <span className="text-secondary font-badge text-badge uppercase flex items-center gap-1 font-bold">
-                              <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0" />
                               Viewing On Map
                             </span>
                           ) : (

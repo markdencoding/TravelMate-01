@@ -222,7 +222,7 @@ export const AuthScreen: React.FC = () => {
           {/* Inspirational Quote */}
           <div className="relative z-10 space-y-3">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-white/10 text-emerald-300 backdrop-blur-xs border border-white/10">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
               Ad-Free Atelier
             </div>
             <p className="text-sm font-medium text-slate-200 leading-relaxed font-serif italic">

@@ -159,7 +159,7 @@ export const FullscreenMapModal: React.FC<FullscreenMapModalProps> = ({
           <div className="h-5 w-px bg-slate-800 hidden sm:block" />
 
           <div className="flex items-center gap-2 min-w-0">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
             <div className="flex flex-col min-w-0">
               <span className="text-xs font-bold text-white truncate font-display">
                 TravelMate Expedition Map

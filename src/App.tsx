@@ -153,7 +153,7 @@ const MainLayout: React.FC = () => {
           aria-label="Expedition quick controls"
           className="fixed bottom-4 right-4 z-40 hidden sm:flex items-center gap-1.5 bg-white/95 dark:bg-slate-800/95 text-slate-800 dark:text-white backdrop-blur-md px-3 py-1.5 rounded-full shadow-lg border border-slate-200 dark:border-slate-700/60 text-xs transition-colors"
         >
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
           <span className="text-[11px] font-mono text-slate-600 dark:text-slate-300">
             {darkMode ? 'Dark Theme' : 'Light Theme'}
           </span>

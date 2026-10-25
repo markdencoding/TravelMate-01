@@ -545,7 +545,7 @@ export const LandingScreen: React.FC = () => {
               <div className="bg-surface-container-lowest dark:bg-slate-900 rounded-3xl border border-surface-container-high dark:border-slate-800 shadow-xl overflow-hidden p-6 sm:p-7 transition-colors">
                 <div className="flex items-center justify-between pb-3 border-b border-surface-container-high/60 dark:border-slate-800">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
                     <span className="text-xs font-bold text-on-surface">Live Expedition Dossier</span>
                   </div>
                   <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold">

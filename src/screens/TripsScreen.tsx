@@ -145,7 +145,7 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
         {/* Sync Status */}
         <div className="flex items-center gap-space-sm self-start md:self-auto">
           <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container text-on-surface-variant font-caption text-caption shadow-xs">
-            <span className="w-2 h-2 rounded-full bg-surface-tint animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-surface-tint shrink-0" />
             <span>All plans synchronized</span>
           </div>
           <span className="text-outline-variant font-caption hidden sm:inline">•</span>

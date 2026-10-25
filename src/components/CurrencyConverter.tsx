@@ -252,7 +252,7 @@ export const CurrencyConverter: React.FC<CurrencyConverterProps> = ({
                 }`}
                 title="Live mid-market currency rates feed"
               >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                 <span>LIVE RATES</span>
                 {lastTickDirection === 'up' && <span className="text-[9px]">▲</span>}
                 {lastTickDirection === 'down' && <span className="text-[9px]">▼</span>}
