@@ -109,18 +109,18 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
               setActiveTab('dossier');
               router.push('/dossier');
             }}
-            className="flex-1 sm:flex-initial h-10 px-3 sm:px-space-md bg-surface-container-lowest hover:bg-surface-container-low text-primary font-button text-xs sm:text-button rounded-xl shadow-xs flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer border border-surface-container-high/60"
+            className="flex-1 sm:flex-initial h-10 px-3 sm:px-space-md bg-surface-container-lowest hover:bg-surface-container-low text-primary font-button text-xs sm:text-button rounded-xl shadow-xs inline-flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer border border-surface-container-high/60"
             type="button"
           >
-            <span className="material-symbols-outlined text-[16px] sm:text-[18px]">picture_as_pdf</span>
+            <span className="material-symbols-outlined text-[16px] sm:text-[18px] shrink-0">picture_as_pdf</span>
             <span className="truncate">Export Itinerary</span>
           </button>
           <button
             onClick={() => openEditTripModal()}
-            className="flex-1 sm:flex-initial h-10 px-3.5 sm:px-space-md bg-secondary hover:bg-secondary-container text-on-secondary font-button text-xs sm:text-button rounded-xl shadow-sm flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer active:scale-95 font-bold"
+            className="flex-1 sm:flex-initial h-10 px-3.5 sm:px-space-md bg-secondary hover:bg-secondary-container text-on-secondary font-button text-xs sm:text-button rounded-xl shadow-sm inline-flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer active:scale-95 font-bold"
             type="button"
           >
-            <span className="material-symbols-outlined text-[18px] sm:text-[20px]">add</span>
+            <span className="material-symbols-outlined text-[18px] sm:text-[20px] shrink-0">add</span>
             <span>New Trip</span>
           </button>
         </div>
@@ -274,10 +274,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
           </p>
           <button
             onClick={() => openEditTripModal()}
-            className="mt-space-md h-[40px] px-5 rounded-xl bg-secondary hover:bg-secondary-container text-on-secondary font-button text-caption shadow-sm cursor-pointer font-semibold flex items-center gap-1.5"
+            className="mt-space-md h-[40px] px-5 rounded-xl bg-secondary hover:bg-secondary-container text-on-secondary font-button text-caption shadow-sm cursor-pointer font-semibold inline-flex items-center justify-center gap-1.5"
             type="button"
           >
-            <span className="material-symbols-outlined text-[18px]">add</span>
+            <span className="material-symbols-outlined text-[18px] shrink-0">add</span>
             <span>Create First Trip</span>
           </button>
         </div>
@@ -343,18 +343,18 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
                   setActiveTab('explore-map');
                   router.push('/explore');
                 }}
-                className="h-9 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-button text-caption flex items-center gap-1 transition-colors cursor-pointer"
+                className="flex-1 sm:flex-initial h-9 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-button text-caption inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 type="button"
               >
-                <span className="material-symbols-outlined text-[16px]">map</span>
+                <span className="material-symbols-outlined text-[16px] shrink-0">map</span>
                 <span>View Map Route</span>
               </button>
               <button
                 onClick={() => openEditTripModal(activeTrip)}
-                className="h-9 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-button text-caption flex items-center gap-1 transition-colors cursor-pointer"
+                className="flex-1 sm:flex-initial h-9 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-button text-caption inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                 type="button"
               >
-                <span className="material-symbols-outlined text-[16px]">add_circle</span>
+                <span className="material-symbols-outlined text-[16px] shrink-0">edit_calendar</span>
                 <span>Edit Trip</span>
               </button>
               <button
@@ -362,11 +362,11 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({ initialTrips }
                   setActiveTab('dossier');
                   router.push('/dossier');
                 }}
-                className="h-9 px-4 rounded-lg bg-primary text-on-primary hover:bg-primary-container font-button text-caption flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="flex-1 sm:flex-initial h-9 px-3.5 rounded-lg bg-primary text-on-primary hover:bg-primary-container font-button text-caption inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer font-semibold"
                 type="button"
               >
+                <span className="material-symbols-outlined text-[16px] shrink-0">menu_book</span>
                 <span>Open Full Itinerary</span>
-                <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
               </button>
             </div>
           </div>

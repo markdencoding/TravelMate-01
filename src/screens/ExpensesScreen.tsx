@@ -1067,10 +1067,10 @@ export const ExpensesScreen: React.FC = () => {
             <div className="flex items-center gap-2 pt-2">
               <button
                 disabled={isSubmitting}
-                className="flex-1 h-[44px] bg-secondary hover:bg-secondary-container text-on-secondary font-button text-button rounded-lg shadow-sm flex items-center justify-center gap-1.5 transition-transform active:scale-95 cursor-pointer font-semibold"
+                className="flex-1 h-[44px] bg-secondary hover:bg-secondary-container text-on-secondary font-button text-button rounded-lg shadow-sm inline-flex items-center justify-center gap-1.5 transition-transform active:scale-95 cursor-pointer font-semibold"
                 type="submit"
               >
-                <span className="material-symbols-outlined text-[18px]">
+                <span className="material-symbols-outlined text-[18px] shrink-0">
                   {isSubmitting ? 'refresh' : 'check'}
                 </span>
                 <span>{isSubmitting ? 'Saving...' : 'Save Expense'}</span>
@@ -1082,7 +1082,7 @@ export const ExpensesScreen: React.FC = () => {
                   setFormAmount('0.00');
                   setFormNotes('');
                 }}
-                className="h-[44px] px-4 bg-surface-container hover:bg-surface-variant text-on-surface-variant font-button text-button rounded-lg transition-colors cursor-pointer"
+                className="h-[44px] px-4 bg-surface-container hover:bg-surface-variant text-on-surface-variant font-button text-button rounded-lg transition-colors cursor-pointer inline-flex items-center justify-center"
               >
                 Clear
               </button>

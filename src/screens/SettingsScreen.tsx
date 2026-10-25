@@ -254,47 +254,47 @@ export const SettingsScreen: React.FC = () => {
       <div className="flex flex-wrap border-b border-slate-200 dark:border-slate-800 gap-x-6 gap-y-2 text-xs font-semibold text-slate-500">
         <button
           onClick={() => setActiveSubTab('general')}
-          className={`pb-3 flex items-center gap-1.5 transition-all ${
+          className={`pb-3 inline-flex items-center gap-1.5 transition-all cursor-pointer ${
             activeSubTab === 'general'
               ? 'text-primary border-b-2 border-primary font-bold'
-              : 'hover:text-slate-900'
+              : 'hover:text-slate-900 dark:hover:text-slate-100'
           }`}
         >
-          <span className="material-symbols-outlined text-[16px]">person</span>
-          Profile & Account
+          <span className="material-symbols-outlined text-[16px] shrink-0">person</span>
+          <span>Profile & Account</span>
         </button>
         <button
           onClick={() => setActiveSubTab('preferences')}
-          className={`pb-3 flex items-center gap-1.5 transition-all ${
+          className={`pb-3 inline-flex items-center gap-1.5 transition-all cursor-pointer ${
             activeSubTab === 'preferences'
               ? 'text-primary border-b-2 border-primary font-bold'
-              : 'hover:text-slate-900'
+              : 'hover:text-slate-900 dark:hover:text-slate-100'
           }`}
         >
-          <span className="material-symbols-outlined text-[16px]">tune</span>
-          Display & Regional
+          <span className="material-symbols-outlined text-[16px] shrink-0">tune</span>
+          <span>Display & Regional</span>
         </button>
         <button
           onClick={() => setActiveSubTab('data')}
-          className={`pb-3 flex items-center gap-1.5 transition-all ${
+          className={`pb-3 inline-flex items-center gap-1.5 transition-all cursor-pointer ${
             activeSubTab === 'data'
               ? 'text-primary border-b-2 border-primary font-bold'
-              : 'hover:text-slate-900'
+              : 'hover:text-slate-900 dark:hover:text-slate-100'
           }`}
         >
-          <span className="material-symbols-outlined text-[16px]">database</span>
-          Data & LocalStorage
+          <span className="material-symbols-outlined text-[16px] shrink-0">database</span>
+          <span>Data & LocalStorage</span>
         </button>
         <button
           onClick={() => setActiveSubTab('security')}
-          className={`pb-3 flex items-center gap-1.5 transition-all ${
+          className={`pb-3 inline-flex items-center gap-1.5 transition-all cursor-pointer ${
             activeSubTab === 'security'
               ? 'text-primary border-b-2 border-primary font-bold'
-              : 'hover:text-slate-900'
+              : 'hover:text-slate-900 dark:hover:text-slate-100'
           }`}
         >
-          <span className="material-symbols-outlined text-[16px]">shield</span>
-          Privacy & Security
+          <span className="material-symbols-outlined text-[16px] shrink-0">shield</span>
+          <span>Privacy & Security</span>
         </button>
       </div>
 
@@ -330,9 +330,9 @@ export const SettingsScreen: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsAvatarModalOpen(true)}
-                className="mt-2 px-3 py-1 bg-surface-container hover:bg-surface-container-high text-primary rounded-full text-[11px] font-semibold flex items-center gap-1 cursor-pointer transition-all hover:scale-105"
+                className="mt-2 px-3 py-1 bg-surface-container hover:bg-surface-container-high text-primary rounded-full text-[11px] font-semibold inline-flex items-center justify-center gap-1 cursor-pointer transition-all hover:scale-105"
               >
-                <span className="material-symbols-outlined text-[14px]">photo_camera</span>
+                <span className="material-symbols-outlined text-[14px] shrink-0">photo_camera</span>
                 <span>Change Avatar</span>
               </button>
             </div>

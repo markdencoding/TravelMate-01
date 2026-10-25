@@ -1174,7 +1174,7 @@ export const EditTripModal: React.FC = () => {
           <div className="flex items-center gap-space-sm w-full sm:w-auto justify-end">
             <button
               onClick={() => setIsEditTripModalOpen(false)}
-              className="h-[44px] px-5 rounded-lg text-primary hover:bg-surface-container-high font-button text-button transition-colors cursor-pointer"
+              className="h-[44px] px-5 rounded-lg text-primary hover:bg-surface-container-high font-button text-button transition-colors cursor-pointer inline-flex items-center justify-center"
               type="button"
             >
               Cancel

@@ -431,11 +431,11 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
               ? 'No itinerary records match your criteria. Clear applied filters or start a fresh expedition.'
               : 'Create your first expedition itinerary to begin planning destinations, budgets, and activities.'}
           </p>
-          <div className="mt-space-md flex gap-space-sm">
+          <div className="mt-space-md flex gap-space-sm flex-wrap justify-center">
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="h-[36px] px-4 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-primary font-button text-caption transition-colors cursor-pointer font-semibold"
+                className="h-[36px] px-4 rounded-lg bg-surface-container-high hover:bg-surface-container-highest text-primary font-button text-caption transition-colors cursor-pointer font-semibold inline-flex items-center justify-center"
                 type="button"
               >
                 Clear Filters
@@ -443,10 +443,10 @@ export const TripsScreen: React.FC<TripsScreenProps> = ({ initialTrips }) => {
             )}
             <button
               onClick={() => openEditTripModal()}
-              className="h-[36px] px-5 rounded-lg bg-secondary hover:bg-secondary-container text-on-secondary font-button text-caption shadow-sm cursor-pointer font-semibold flex items-center gap-1.5"
+              className="h-[36px] px-5 rounded-lg bg-secondary hover:bg-secondary-container text-on-secondary font-button text-caption shadow-sm cursor-pointer font-semibold inline-flex items-center justify-center gap-1.5"
               type="button"
             >
-              <span className="material-symbols-outlined text-[18px]">add</span>
+              <span className="material-symbols-outlined text-[18px] shrink-0">add</span>
               <span>Create First Trip</span>
             </button>
           </div>

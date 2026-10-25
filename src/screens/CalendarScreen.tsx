@@ -326,18 +326,18 @@ export const CalendarScreen: React.FC = () => {
               }
               setShowAddModal(true);
             }}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-semibold shadow-sm shadow-primary/20 transition-all hover:scale-[1.02]"
+            className="inline-flex items-center justify-center gap-1.5 h-9 px-3.5 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-semibold shadow-sm shadow-primary/20 transition-all hover:scale-[1.02] cursor-pointer"
           >
-            <span className="material-symbols-outlined text-[16px]">add</span>
+            <span className="material-symbols-outlined text-[16px] shrink-0">add</span>
             {trips.length === 0 ? 'Create Trip' : 'Add Event'}
           </button>
 
           <button
             onClick={() => openEditTripModal()}
-            className="p-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-300 transition-colors shadow-xs"
+            className="h-9 w-9 inline-flex items-center justify-center bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-600 dark:text-slate-300 transition-colors shadow-xs cursor-pointer"
             title="Edit Trip Settings"
           >
-            <span className="material-symbols-outlined text-[18px]">settings</span>
+            <span className="material-symbols-outlined text-[18px] shrink-0">settings</span>
           </button>
         </div>
       </div>
@@ -927,13 +927,13 @@ export const CalendarScreen: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  className="h-9 px-4 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors inline-flex items-center justify-center cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-semibold shadow-sm"
+                  className="h-9 px-4 bg-primary hover:bg-primary-dark text-white rounded-xl text-xs font-semibold shadow-sm inline-flex items-center justify-center cursor-pointer"
                 >
                   Save Activity
                 </button>
