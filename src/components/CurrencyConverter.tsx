@@ -57,7 +57,7 @@ export const CurrencyConverter: React.FC<CurrencyConverterProps> = ({
 
   const [isLiveFeedActive, setIsLiveFeedActive] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [lastUpdatedTime, setLastUpdatedTime] = useState<Date>(new Date());
+  const [lastUpdatedTime, setLastUpdatedTime] = useState<Date | null>(null);
   const [lastTickDirection, setLastTickDirection] = useState<'up' | 'down' | null>(null);
   const [activeTab, setActiveTab] = useState<'converter' | 'cheatsheet' | 'fx-info'>('converter');
 
@@ -119,6 +119,7 @@ export const CurrencyConverter: React.FC<CurrencyConverterProps> = ({
   // Fetch live rates from Route Handler on mount
   useEffect(() => {
     let isMounted = true;
+    setLastUpdatedTime(new Date());
     async function loadRates() {
       try {
         const res = await fetch('/api/exchange-rates');
@@ -221,11 +222,13 @@ export const CurrencyConverter: React.FC<CurrencyConverterProps> = ({
   };
 
   // Format timestamp
-  const formattedTime = lastUpdatedTime.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
+  const formattedTime = lastUpdatedTime
+    ? lastUpdatedTime.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      })
+    : null;
 
   return (
     <div
@@ -585,7 +588,7 @@ export const CurrencyConverter: React.FC<CurrencyConverterProps> = ({
               Quick offline reference cheat-sheet for {fromCode} ({fromInfo.name}) to {toCode} (
               {toInfo.name})
             </span>
-            <span className="font-mono text-[11px]">Updated {formattedTime}</span>
+            <span className="font-mono text-[11px]">{formattedTime ? `Updated ${formattedTime}` : 'Live rates'}</span>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -727,7 +730,7 @@ export const CurrencyConverter: React.FC<CurrencyConverterProps> = ({
           <span className="material-symbols-outlined text-[14px] text-emerald-500">info</span>
           <span>Approximate mid-market quote • For informational reference</span>
         </div>
-        <div>Last updated at {formattedTime} (approximate rates feed)</div>
+        <div>{formattedTime ? `Last updated at ${formattedTime} (approximate rates feed)` : 'Approximate mid-market rates feed'}</div>
       </div>
     </div>
   );

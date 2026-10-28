@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   RecommendationItem,
   WikidataBinding,
+  getTravelerRecommendations,
   parseWikidataRecommendations,
 } from '@/lib/recommendations';
 import { CURATED_LOCATIONS } from '@/lib/location-data';
+import { travelerRecommendationsQuerySchema } from '@/lib/validators/recommendations';
 
 export const revalidate = 604800; // Cache 7 days on Next.js server
 
@@ -18,22 +20,25 @@ interface WikidataResponse {
 const inMemoryCache = new Map<string, { timestamp: number; data: RecommendationItem[] }>();
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
-export async function GET(request: NextRequest) {
-  const searchParams = request.nextUrl.searchParams;
-  const country = (searchParams.get('country') || '').trim();
+function toTitleCaseCountry(country: string): string {
+  return country
+    .trim()
+    .split(/\s+/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ');
+}
 
-  if (!country || country.length < 2) {
-    return NextResponse.json({ recommendations: [] });
-  }
-
-  const cacheKey = country.toLowerCase();
+async function fetchCountryWikidataRecommendations(
+  country: string,
+  timeoutMs: number
+): Promise<RecommendationItem[]> {
+  const cacheKey = country.trim().toLowerCase();
   const cached = inMemoryCache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
-    return NextResponse.json({ recommendations: cached.data });
+    return cached.data;
   }
 
-  // Capitalize properly for Wikidata english label match (e.g., "japan" -> "Japan")
-  const sanitizedCountry = country.charAt(0).toUpperCase() + country.slice(1);
+  const sanitizedCountry = toTitleCaseCountry(country);
 
   const sparqlQuery = `
 SELECT DISTINCT ?place ?placeLabel ?coords ?sitelinks WHERE {
@@ -64,7 +69,7 @@ LIMIT 12
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     const sparqlUrl = new URL('https://query.wikidata.org/sparql');
     sparqlUrl.searchParams.set('query', sparqlQuery);
@@ -82,16 +87,13 @@ LIMIT 12
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      console.warn(`Wikidata query failed with status ${res.status}`);
-      return NextResponse.json({ recommendations: [] });
+      return getCuratedCountryRecommendations(sanitizedCountry);
     }
 
     const data: WikidataResponse = await res.json();
     const bindings = data.results?.bindings || [];
-
     let recommendations = parseWikidataRecommendations(bindings, sanitizedCountry);
 
-    // If Wikidata returned empty, supplement with curated country locations
     if (recommendations.length === 0) {
       recommendations = getCuratedCountryRecommendations(sanitizedCountry);
     }
@@ -101,12 +103,56 @@ LIMIT 12
       data: recommendations,
     });
 
-    return NextResponse.json({ recommendations });
-  } catch (err) {
-    console.warn('Failed to query Wikidata country recommendations, using curated fallback:', err);
-    const fallback = getCuratedCountryRecommendations(sanitizedCountry);
-    return NextResponse.json({ recommendations: fallback });
+    return recommendations;
+  } catch {
+    return getCuratedCountryRecommendations(sanitizedCountry);
   }
+}
+
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const mode = (searchParams.get('mode') || '').trim().toLowerCase();
+
+  if (mode === 'travelers') {
+    const parsed = travelerRecommendationsQuerySchema.safeParse({
+      country: searchParams.get('country') ?? 'all',
+      category: searchParams.get('category') ?? 'all',
+    });
+
+    if (!parsed.success) {
+      const message = parsed.error.issues[0]?.message || 'Invalid filter parameters.';
+      return NextResponse.json({ error: message, destinations: [] }, { status: 400 });
+    }
+
+    const { country, category } = parsed.data;
+    const isAllCountries = !country || country.toLowerCase() === 'all';
+    const extraWikidataItems = isAllCountries
+      ? []
+      : await fetchCountryWikidataRecommendations(country, 6000);
+
+    const destinations = getTravelerRecommendations({
+      country,
+      category,
+      extraWikidataItems,
+    });
+
+    return NextResponse.json(
+      { destinations },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=86400, stale-while-revalidate=604800',
+        },
+      }
+    );
+  }
+
+  const country = (searchParams.get('country') || '').trim();
+  if (!country || country.length < 2) {
+    return NextResponse.json({ recommendations: [] });
+  }
+
+  const recommendations = await fetchCountryWikidataRecommendations(country, 12000);
+  return NextResponse.json({ recommendations });
 }
 
 function getCuratedCountryRecommendations(countryName: string): RecommendationItem[] {

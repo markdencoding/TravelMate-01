@@ -9,6 +9,8 @@ import { createClient } from '@/lib/supabase/client';
 import { signInSchema, signUpSchema } from '@/lib/validators/auth';
 import type { TripMapDestination, TripMapExtraSpot } from '@/components/map/TripMap';
 import { CurrencyConverter } from '@/components/CurrencyConverter';
+import { RecommendedDestinationsSection } from '@/components/RecommendedDestinationsSection';
+import type { TravelerDestinationRecommendation } from '@/lib/recommendations';
 
 const TripMap = dynamic(
   () => import('@/components/map/TripMap').then((mod) => mod.TripMap),
@@ -149,7 +151,58 @@ export const LandingScreen: React.FC = () => {
   } | null>(null);
   const [isLoadingWeather, setIsLoadingWeather] = useState(false);
 
-  const activeDest = SAMPLE_DESTINATIONS.find((d) => d.id === selectedDestId) || SAMPLE_DESTINATIONS[0];
+  const [customPreviewDest, setCustomPreviewDest] = useState<SampleDestination | null>(null);
+  const activeDest =
+    (customPreviewDest && customPreviewDest.id === selectedDestId ? customPreviewDest : null) ||
+    SAMPLE_DESTINATIONS.find((d) => d.id === selectedDestId) ||
+    SAMPLE_DESTINATIONS[0];
+
+  const handlePreviewRecommendedDestination = (rec: TravelerDestinationRecommendation) => {
+    setCustomPreviewDest({
+      id: rec.id,
+      name: rec.name,
+      region: rec.region,
+      country: rec.country,
+      latitude: rec.latitude,
+      longitude: rec.longitude,
+      currency: rec.currency,
+      clothingTip: rec.clothingTip,
+      description: rec.summary,
+      spots: rec.spots,
+    });
+    setSelectedDestId(rec.id);
+    if (typeof document !== 'undefined') {
+      document.getElementById('interactive-map')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handlePlanRecommendedDestination = (rec: TravelerDestinationRecommendation) => {
+    setCustomPreviewDest({
+      id: rec.id,
+      name: rec.name,
+      region: rec.region,
+      country: rec.country,
+      latitude: rec.latitude,
+      longitude: rec.longitude,
+      currency: rec.currency,
+      clothingTip: rec.clothingTip,
+      description: rec.summary,
+      spots: rec.spots,
+    });
+    setSelectedDestId(rec.id);
+    try {
+      sessionStorage.setItem(
+        'travelmate_recommended_dest',
+        JSON.stringify({
+          name: rec.name,
+          country: rec.country,
+          latitude: rec.latitude,
+          longitude: rec.longitude,
+        })
+      );
+    } catch {}
+    handleOpenAuthModal('signup');
+  };
 
   const handleOpenAuthModal = (mode: 'signin' | 'signup') => {
     setAuthMode(mode);
@@ -419,6 +472,9 @@ export const LandingScreen: React.FC = () => {
           {/* Nav Links & Action Buttons */}
           <div className="flex items-center gap-2 sm:gap-3">
             <div className="hidden md:flex items-center gap-4 text-xs font-semibold text-on-surface-variant mr-2">
+              <a href="#recommended-destinations" className="hover:text-primary transition-colors">
+                Recommended
+              </a>
               <a href="#interactive-map" className="hover:text-primary transition-colors">
                 Destinations &amp; Maps
               </a>
@@ -610,6 +666,12 @@ export const LandingScreen: React.FC = () => {
         </div>
       </section>
 
+      <RecommendedDestinationsSection
+        activeDestinationId={selectedDestId}
+        onPreviewDestination={handlePreviewRecommendedDestination}
+        onPlanTrip={handlePlanRecommendedDestination}
+      />
+
       {/* SECTION 2: Interactive Destination & Leaflet Map Explorer */}
       <section id="interactive-map" className="py-12 md:py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full max-w-full overflow-x-clip">
         <div className="text-center md:text-left mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -634,7 +696,10 @@ export const LandingScreen: React.FC = () => {
                 <button
                   key={dest.id}
                   type="button"
-                  onClick={() => setSelectedDestId(dest.id)}
+                  onClick={() => {
+                    setCustomPreviewDest(null);
+                    setSelectedDestId(dest.id);
+                  }}
                   className={`px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 touch-manipulation whitespace-nowrap min-h-[42px] ${
                     isSelected
                       ? 'bg-primary text-on-primary shadow-xs ring-2 ring-primary/20'
@@ -673,6 +738,11 @@ export const LandingScreen: React.FC = () => {
               <div className="mt-4 pt-3 border-t border-surface-container-high/60 dark:border-slate-800/80">
                 <div className="text-[11px] font-bold text-on-surface mb-2">Key Attractions</div>
                 <div className="space-y-1.5">
+                  {activeDest.spots.length === 0 && (
+                    <div className="p-2.5 rounded-xl bg-surface-container-low dark:bg-slate-800/80 border border-surface-container-high/60 dark:border-slate-700/60 text-xs text-on-surface-variant">
+                      Map centered on {activeDest.name} ({activeDest.latitude.toFixed(2)}°, {activeDest.longitude.toFixed(2)}°).
+                    </div>
+                  )}
                   {activeDest.spots.map((spot, idx) => (
                     <div
                       key={spot.id}
